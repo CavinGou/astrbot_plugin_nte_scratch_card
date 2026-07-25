@@ -9,7 +9,7 @@ import random
 from pathlib import Path
 from typing import Dict, List
 
-from astrbot.api.event import filter, AstrMessageEvent, PermissionType
+from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star, register
 from astrbot.api import logger
 from astrbot.api.message_components import Node, Nodes, Plain, At
@@ -588,9 +588,11 @@ class NteScratchCardPlugin(Star):
     # 指令: /发钱 @用户 金额  - 管理员发钱
     # ----------------------------------------------------------
     @filter.command("刮发钱")
-    @filter.permission_type(PermissionType.ADMIN)
     async def give_money(self, event: AstrMessageEvent):
         """管理员给指定用户加方斯"""
+        if event.role != "admin":
+            yield event.plain_result("❌ 仅管理员可使用此指令")
+            return
         uid = event.get_sender_id()
         self._ensure_user(uid)
 
