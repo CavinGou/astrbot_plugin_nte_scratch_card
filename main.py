@@ -198,7 +198,16 @@ def _decompose_prize(total: int) -> List[int]:
         # 格子充裕度决定选大还是选小
         min_needed = (remaining + min_p - 1) // min_p
         if min_needed <= cells_left:
-            chosen = random.choice(valid[:max(1, (len(valid) + 1) // 2)])
+            # 随机混合：大额和小额混搭，兼顾视觉冲击和数量多样性
+            if remaining >= 100000:
+                avg = remaining // cells_left
+                large = [t for t in valid if t >= avg]
+                if random.random() < 0.3 or not large:
+                    chosen = random.choice(valid[:max(1, (len(valid) + 1) // 2)])
+                else:
+                    chosen = random.choice(large)
+            else:
+                chosen = random.choice(valid[:max(1, (len(valid) + 1) // 2)])
         else:
             avg = remaining // cells_left
             large = [t for t in valid if t >= avg]
@@ -599,7 +608,7 @@ class NteScratchCardPlugin(Star):
             group = await event.get_group()
             if group and group.members:
                 for m in group.members:
-                    name_map[str(m.user_id)] = m.nickname
+                    name_map[str(m.user_id)] = m.card or m.nickname
         except Exception:
             pass
 
@@ -664,8 +673,9 @@ class NteScratchCardPlugin(Star):
             group = await event.get_group()
             if group and group.members:
                 for m in group.members:
-                    if str(m.user_id) == target_uid and m.nickname:
-                        target_name = (m.nickname[:9] + "…") if len(m.nickname) > 10 else m.nickname
+                    if str(m.user_id) == target_uid and (m.card or m.nickname):
+                        name = m.card or m.nickname
+                        target_name = (name[:9] + "…") if len(name) > 10 else name
                         break
         except Exception:
             pass
@@ -732,8 +742,9 @@ class NteScratchCardPlugin(Star):
             group = await event.get_group()
             if group and group.members:
                 for m in group.members:
-                    if str(m.user_id) == target_uid and m.nickname:
-                        target_name = (m.nickname[:9] + "…") if len(m.nickname) > 10 else m.nickname
+                    if str(m.user_id) == target_uid and (m.card or m.nickname):
+                        name = m.card or m.nickname
+                        target_name = (name[:9] + "…") if len(name) > 10 else name
                         break
         except Exception:
             pass
