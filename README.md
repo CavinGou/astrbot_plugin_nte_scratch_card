@@ -1,14 +1,60 @@
-# astrbot-plugin-helloworld
+# NTE 刮刮乐 — AstrBot 插件
 
-AstrBot 插件模板 / A template plugin for AstrBot plugin feature
+🎴 复刻异环的刮刮乐玩法，适用于 AstrBot 聊天机器人平台。
 
-> [!NOTE]
-> This repo is just a template of [AstrBot](https://github.com/AstrBotDevs/AstrBot) Plugin.
-> 
-> [AstrBot](https://github.com/AstrBotDevs/AstrBot) is an agentic assistant for both personal and group conversations. It can be deployed across dozens of mainstream instant messaging platforms, including QQ, Telegram, Feishu, DingTalk, Slack, LINE, Discord, Matrix, etc. In addition, it provides a reliable and extensible conversational AI infrastructure for individuals, developers, and teams. Whether you need a personal AI companion, an intelligent customer support agent, an automation assistant, or an enterprise knowledge base, AstrBot enables you to quickly build AI applications directly within your existing messaging workflows.
 
-# Supports
+## 功能
 
-- [AstrBot Repo](https://github.com/AstrBotDevs/AstrBot)
-- [AstrBot Plugin Development Docs (Chinese)](https://docs.astrbot.app/dev/star/plugin-new.html)
-- [AstrBot Plugin Development Docs (English)](https://docs.astrbot.app/en/dev/star/plugin-new.html)
+| 指令 | 说明 |
+|------|------|
+| `/刮刮乐 [数量]` | 一键购买并刮开，支持一次多张（合并转发） |
+| `/刮抚恤金` | 每日领取 30 万方斯抚恤金 |
+| `/刮余额` | 查看余额和游戏统计数据 |
+| `/富爪榜` | 查看累计盈亏排行榜（不限人数） |
+| `/刮转账 @用户 金额` | 将自己的方斯转给指定用户 |
+| `/刮发钱 @用户 金额` | 🔒 管理员给指定用户加方斯 |
+| `/刮刮乐帮助` | 显示帮助信息 |
+
+## 卡片说明
+
+| 项目 | 数值 |
+|------|------|
+| 售价 | **50,000 方斯** |
+| 格子数 | 15 格（3 × 5） |
+| 最高奖金 | **250 万方斯** |
+| 期望回报 | **~95.03%** |
+
+### 单格奖金档位
+
+2万 · 5万 · 10万 · 15万 · 20万 · 30万 · 50万 · 80万 · 100万 · 150万
+
+## 概率系统
+
+基于异环实际数据提取的概率。先按概率抽取总奖金，再分解到 15 个格子中。
+
+## 货币系统
+
+- 每位新用户初始持有 **3,000,000 方斯**
+- 每次刮卡消耗 50,000 方斯，每日限购 **60 张**
+- 每日可领取 **30 万** 抚恤金
+- 盈亏按累计盈亏（总奖金 - 总投入）排名
+
+## 安装
+
+将本仓库克隆或下载到 AstrBot 的 `addons` 目录下即可。
+
+```bash
+cd addons
+git clone https://github.com/CavinGou/astrbot_plugin_nte_scratch_card.git
+```
+
+## 数据存储
+
+插件数据保存在 `data/nte_scratch_card/` 目录下：
+- `balance.json` — 用户余额数据
+- `stats.json` — 用户游戏统计数据
+
+## 参考
+
+- [AstrBot 项目](https://github.com/AstrBotDevs/AstrBot)
+- [AstrBot 插件开发文档](https://docs.astrbot.app/dev/star/plugin-new.html)
