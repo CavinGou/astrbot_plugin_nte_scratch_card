@@ -162,9 +162,6 @@ INITIAL_BALANCE = 3_000_000
 # 每日限购
 DAILY_LIMIT = 60
 
-# 每日抚恤金
-PENSION_AMOUNT = 300_000
-
 
 # ----------------------------------------------------------
 # 卡片生成（基于精确概率分布）
@@ -333,6 +330,8 @@ class NteScratchCardPlugin(Star):
                 "daily_date": "",
                 "daily_bought": 0,
                 "pension_date": "",
+                "cycle_order": [],
+                "cycle_pos": 0,
             }
 
     # ----------------------------------------------------------
@@ -474,7 +473,7 @@ class NteScratchCardPlugin(Star):
             "🎴 NTE 刮刮乐 - 帮助\n",
             "━━━ 指令列表 ━━━",
             f"/刮刮乐 [数量]  购买并刮开，默认1张，支持多张",
-            f"/刮抚恤金       每日领取 30 万方斯",
+            f"/刮取钱         每日随机领取方斯",
             f"/刮余额         查看余额和游戏统计",
             f"/富爪榜         累计盈亏排行榜前10",
             f"/刮刮乐帮助     显示此帮助\n",
@@ -485,11 +484,11 @@ class NteScratchCardPlugin(Star):
         yield event.plain_result("\n".join(lines))
 
     # ----------------------------------------------------------
-    # 指令: /抚恤金  - 每日领取抚恤金
+    # 指令: /刮取钱  - 每日领取随机方斯
     # ----------------------------------------------------------
-    @filter.command("刮抚恤金")
+    @filter.command("刮取钱")
     async def pension(self, event: AstrMessageEvent):
-        """每日领取抚恤金"""
+        """每日阶段性领取方斯（周期内顺序随机）"""
         uid = event.get_sender_id()
         self._ensure_user(uid)
         stats = self._user_stats[uid]
@@ -497,18 +496,39 @@ class NteScratchCardPlugin(Star):
         today = date.today().isoformat()
         if stats.get("pension_date") == today:
             yield event.plain_result(
-                f"❌ 今天的抚恤金已经领过了，明天再来吧 😊"
+                f"❌ 今天已经领过了，明天再来吧 😊"
             )
             return
 
+        # 四个档位
+        tiers = [
+            (300000,  "管理局给娜娜莉的医疗补贴下来了，手头宽裕了些"),
+            (500000,  "雨燕出行跑了一天单，腰都要断了，赚点辛苦钱。"),
+            (700000,  "背着店长偷偷把伊波恩抵押了…发了笔小财！"),
+            (1000000, "赶上粉爪大劫案，浑水摸鱼捞了一笔，赶紧跑路！"),
+        ]
+
+        # 初始化或重新洗牌
+        cycle_order = stats.get("cycle_order", [])
+        cycle_pos = stats.get("cycle_pos", 0)
+        if not cycle_order or cycle_pos >= len(cycle_order):
+            cycle_order = list(range(len(tiers)))
+            random.shuffle(cycle_order)
+            cycle_pos = 0
+
+        idx = cycle_order[cycle_pos]
+        amount, msg = tiers[idx]
+
         stats["pension_date"] = today
-        self._user_balance[uid] += PENSION_AMOUNT
+        stats["cycle_order"] = cycle_order
+        stats["cycle_pos"] = cycle_pos + 1
+        self._user_balance[uid] += amount
         self._save_balance()
         self._save_stats()
 
         yield event.plain_result(
-            f"💝 娜娜莉的抚恤金\n"
-            f"获得 {_fmt_money(PENSION_AMOUNT)} 方斯！\n"
+            f"💝 {msg}\n"
+            f"获得 {_fmt_money(amount)} 方斯！\n"
             f"💰 当前余额: {_fmt_money(self._user_balance[uid])} 方斯"
         )
 
@@ -589,7 +609,7 @@ class NteScratchCardPlugin(Star):
                 return uid[-4:]
             return (raw[:9] + "…") if len(raw) > 10 else raw
 
-        lines = ["🏆 刮刮乐欧皇榜\n"]
+        lines = ["🏆 海特洛富爪榜\n"]
         for idx, (uid, net) in enumerate(items, 1):
             medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(idx, f"{idx}.")
             sign = "+" if net >= 0 else "-"
