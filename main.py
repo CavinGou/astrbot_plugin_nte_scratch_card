@@ -546,16 +546,26 @@ class NteScratchCardPlugin(Star):
     # ----------------------------------------------------------
     @filter.command("富爪榜")
     async def leaderboard(self, event: AstrMessageEvent):
-        """查看累计盈亏排行榜（不限数量）"""
+        """查看本群累计盈亏排行榜（不限数量）"""
         if not self._user_stats:
             yield event.plain_result("📭 暂无数据，快来 /刮刮乐 吧！")
             return
 
-        # 按累计盈亏排序（总奖金 - 总投入），只看买过卡的
+        # 获取当前群成员 ID 集合，用于群隔离
+        group_uids = set()
+        try:
+            group = await event.get_group()
+            if group and group.members:
+                group_uids = {m.user_id for m in group.members}
+        except Exception:
+            pass
+
+        # 按累计盈亏排序（总奖金 - 总投入），只看本群买过卡的
         items = [
             (uid, stats.get("total_won", 0) - stats.get("total_spent", 0))
             for uid, stats in self._user_stats.items()
             if stats.get("cards_bought", 0) > 0
+            and (not group_uids or uid in group_uids)
         ]
         if not items:
             yield event.plain_result("📭 暂无数据，快来 /刮刮乐 吧！")
@@ -563,12 +573,27 @@ class NteScratchCardPlugin(Star):
 
         items.sort(key=lambda x: x[1], reverse=True)
 
+        # 实时获取群成员名片
+        name_map = {}
+        try:
+            group = await event.get_group()
+            if group and group.members:
+                for m in group.members:
+                    name_map[m.user_id] = m.nickname
+        except Exception:
+            pass
+
+        def _get_name(uid: str) -> str:
+            raw = name_map.get(uid, "")
+            if not raw:
+                return uid[-4:]
+            return (raw[:9] + "…") if len(raw) > 10 else raw
+
         lines = ["🏆 刮刮乐欧皇榜\n"]
         for idx, (uid, net) in enumerate(items, 1):
             medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(idx, f"{idx}.")
-            display = f"用户{uid[-4:]}" if len(uid) > 4 else uid
             sign = "+" if net >= 0 else "-"
-            lines.append(f"{medal} {display} — {sign}{_fmt_money(abs(net))} 方斯")
+            lines.append(f"{medal} {_get_name(uid)} — {sign}{_fmt_money(abs(net))} 方斯")
 
         yield event.plain_result("\n".join(lines))
 
@@ -612,9 +637,22 @@ class NteScratchCardPlugin(Star):
         self._ensure_user(target_uid)
         self._user_balance[target_uid] += amount
         self._save_balance()
+
+        # 获取目标用户群名片
+        target_name = target_uid[-4:]
+        try:
+            group = await event.get_group()
+            if group and group.members:
+                for m in group.members:
+                    if m.user_id == target_uid and m.nickname:
+                        target_name = (m.nickname[:9] + "…") if len(m.nickname) > 10 else m.nickname
+                        break
+        except Exception:
+            pass
+
         yield event.plain_result(
             f"💸 发钱成功！\n"
-            f"用户 {target_uid[-4:]} 获得 {_fmt_money(amount)} 方斯\n"
+            f"{target_name} 获得 {_fmt_money(amount)} 方斯\n"
             f"当前余额: {_fmt_money(self._user_balance[target_uid])} 方斯"
         )
 
@@ -668,9 +706,21 @@ class NteScratchCardPlugin(Star):
         self._user_balance[target_uid] += amount
         self._save_balance()
 
+        # 获取目标用户群名片
+        target_name = target_uid[-4:]
+        try:
+            group = await event.get_group()
+            if group and group.members:
+                for m in group.members:
+                    if m.user_id == target_uid and m.nickname:
+                        target_name = (m.nickname[:9] + "…") if len(m.nickname) > 10 else m.nickname
+                        break
+        except Exception:
+            pass
+
         yield event.plain_result(
             f"💸 转账成功！\n"
-            f"转出 {_fmt_money(amount)} 方斯 → 用户 {target_uid[-4:]}\n"
+            f"转出 {_fmt_money(amount)} 方斯 → {target_name}\n"
             f"💰 当前余额: {_fmt_money(self._user_balance[uid])} 方斯"
         )
 
