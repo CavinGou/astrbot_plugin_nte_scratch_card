@@ -408,7 +408,7 @@ class NteScratchCardPlugin(Star):
                 board,
                 prize_line,
                 f"",
-                f"💰 余额: {_fmt_money(self._user_balance[uid])} 方斯  |  📊 {'+' if net >= 0 else ''}{_fmt_money(net)}",
+                f"💰 余额: {_fmt_money(self._user_balance[uid])} 方斯  |  📊 {'+' if net >= 0 else '-'}{_fmt_money(abs(net))}",
                 f"📅 今日剩余: {DAILY_LIMIT - stats['daily_bought']} / {DAILY_LIMIT} 张",
             ]
             yield event.plain_result("\n".join(lines))
@@ -453,7 +453,7 @@ class NteScratchCardPlugin(Star):
                 f"📊 刮刮乐 × {count} 汇总\n"
                 f"{won_desc}\n"
                 f"💰 余额: {_fmt_money(self._user_balance[uid])} 方斯\n"
-                f"📊 累计: {'+' if net >= 0 else ''}{_fmt_money(net)}\n"
+                f"📊 累计: {'+' if net >= 0 else '-'}{_fmt_money(abs(net))}\n"
                 f"📅 今日剩余: {DAILY_LIMIT - stats['daily_bought']} / {DAILY_LIMIT} 张"
             )
             node_list.append(Node(
@@ -530,7 +530,7 @@ class NteScratchCardPlugin(Star):
         lines = [
             "📊 个人数据\n",
             f"💰 余额: {_fmt_money(balance)} 方斯",
-            f"📈 累计盈亏: {'+' if net >= 0 else ''}{_fmt_money(net)} 方斯",
+            f"📈 累计盈亏: {'+' if net >= 0 else '-'}{_fmt_money(abs(net))} 方斯",
             f"📅 今日剩余: {DAILY_LIMIT - stats.get('daily_bought', 0)} / {DAILY_LIMIT} 张",
             "",
             f"🎴 购买次数: {stats['cards_bought']} 张",
@@ -567,8 +567,8 @@ class NteScratchCardPlugin(Star):
         for idx, (uid, net) in enumerate(items, 1):
             medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(idx, f"{idx}.")
             display = f"用户{uid[-4:]}" if len(uid) > 4 else uid
-            sign = "+" if net >= 0 else ""
-            lines.append(f"{medal} {display} — {sign}{_fmt_money(net)} 方斯")
+            sign = "+" if net >= 0 else "-"
+            lines.append(f"{medal} {display} — {sign}{_fmt_money(abs(net))} 方斯")
 
         yield event.plain_result("\n".join(lines))
 
