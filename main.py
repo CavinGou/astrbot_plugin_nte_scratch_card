@@ -248,27 +248,17 @@ def _prize_label(amount: int) -> str:
 
 
 def _card_to_str(card_data: dict) -> str:
-    """将卡片格式化为文本表格"""
+    """将卡片格式化为文本（纯文本，无制表符）"""
     grid = _card_grid(card_data["cells"])
-    cols = CARD_COLS
-
-    cell_w = 7
-    top = "┌" + "─" * cell_w + "┬" + ("─" * cell_w + "┬") * (cols - 2) + "─" * cell_w + "┐"
-    sep = "├" + "─" * cell_w + "┼" + ("─" * cell_w + "┼") * (cols - 2) + "─" * cell_w + "┤"
-    bot = "└" + "─" * cell_w + "┴" + ("─" * cell_w + "┴") * (cols - 2) + "─" * cell_w + "┘"
-
-    lines = [f"{CARD_EMOJI} 刮刮卡", top]
-    for i, row in enumerate(grid):
+    lines = [f"{CARD_EMOJI} 刮刮卡"]
+    for row in grid:
         parts = []
         for c in row:
             if c["is_win"]:
-                parts.append(f"🎉{_prize_label(c['prize']):>4}")
+                parts.append(f"{_prize_label(c['prize']):>3}")
             else:
-                parts.append("  ❌  ")
-        lines.append("│" + "│".join(parts) + "│")
-        if i < len(grid) - 1:
-            lines.append(sep)
-    lines.append(bot)
+                parts.append("  ❌ ")
+        lines.append("  ".join(parts))
     return "\n".join(lines)
 
 
@@ -406,7 +396,7 @@ class NteScratchCardPlugin(Star):
             stats["total_won"] += prize
 
             board = _card_to_str(card)
-            prize_line = f"🎉 **中奖 {_fmt_money(prize)} 方斯！**" if prize > 0 else "😅 未中奖"
+            prize_line = f"🎉 中奖 {_fmt_money(prize)} 方斯！" if prize > 0 else "😅 未中奖"
             self._user_balance[uid] += prize
             stats["cards_won"] += win_count
             self._save_balance()
@@ -414,7 +404,7 @@ class NteScratchCardPlugin(Star):
             net = stats["total_won"] - stats["total_spent"]
 
             lines = [
-                f"🎴 **刮刮乐**",
+                f"🎴 刮刮乐",
                 board,
                 prize_line,
                 f"",
@@ -481,18 +471,16 @@ class NteScratchCardPlugin(Star):
     async def help_cmd(self, event: AstrMessageEvent):
         """显示帮助信息"""
         lines = [
-            "🎴 **NTE 刮刮乐 - 帮助**\n",
+            "🎴 NTE 刮刮乐 - 帮助\n",
             "━━━ 指令列表 ━━━",
-            f"`/刮刮乐 [数量]`  购买并刮开，默认1张，支持多张",
-            f"`/刮抚恤金`       每日领取 30 万方斯",
-            f"`/刮余额`         查看余额和游戏统计",
-            f"`/富爪榜`         累计盈亏排行榜前10",
-            f"`/刮刮乐帮助`     显示此帮助\n",
-            "━━━ 卡片信息 ━━━",
-            f"售价: 50,000 方斯  |  格子: 3×5  |  最高奖: 250万",
+            f"/刮刮乐 [数量]  购买并刮开，默认1张，支持多张",
+            f"/刮抚恤金       每日领取 30 万方斯",
+            f"/刮余额         查看余额和游戏统计",
+            f"/富爪榜         累计盈亏排行榜前10",
+            f"/刮刮乐帮助     显示此帮助\n",
+            "━━━ 介绍 ━━━",
             f"初始余额: 300万  |  每日限购: 60张",
-            f"单格奖金: 2w/5w/10w/15w/20w/30w/50w/80w/100w/150w",
-            f"期望回报: ≈95%",
+            f"售价: 50,000 方斯  |  格子: 3×5  |  最高奖: 250万",
         ]
         yield event.plain_result("\n".join(lines))
 
@@ -519,7 +507,7 @@ class NteScratchCardPlugin(Star):
         self._save_stats()
 
         yield event.plain_result(
-            f"💝 **娜娜莉的抚恤金**\n"
+            f"💝 娜娜莉的抚恤金\n"
             f"获得 {_fmt_money(PENSION_AMOUNT)} 方斯！\n"
             f"💰 当前余额: {_fmt_money(self._user_balance[uid])} 方斯"
         )
@@ -540,14 +528,14 @@ class NteScratchCardPlugin(Star):
                     if stats["cards_bought"] > 0 else 0)
 
         lines = [
-            "📊 **个人数据**\n",
-            f"💰 余额: **{_fmt_money(balance)}** 方斯",
-            f"📈 累计盈亏: **{'+' if net >= 0 else ''}{_fmt_money(net)}** 方斯",
-            f"📅 今日剩余: **{DAILY_LIMIT - stats.get('daily_bought', 0)}** / {DAILY_LIMIT} 张",
+            "📊 个人数据\n",
+            f"💰 余额: {_fmt_money(balance)} 方斯",
+            f"📈 累计盈亏: {'+' if net >= 0 else ''}{_fmt_money(net)} 方斯",
+            f"📅 今日剩余: {DAILY_LIMIT - stats.get('daily_bought', 0)} / {DAILY_LIMIT} 张",
             "",
-            f"🎴 购买次数: **{stats['cards_bought']}** 张",
-            f"🏆 中奖次数: **{stats['cards_won']}** 次",
-            f"📊 中奖率: **{win_rate:.1f}%**",
+            f"🎴 购买次数: {stats['cards_bought']} 张",
+            f"🏆 中奖次数: {stats['cards_won']} 次",
+            f"📊 中奖率: {win_rate:.1f}%",
             f"💵 总投入: {_fmt_money(stats['total_spent'])} 方斯",
             f"💵 总奖金: {_fmt_money(stats['total_won'])} 方斯",
         ]
@@ -575,7 +563,7 @@ class NteScratchCardPlugin(Star):
 
         items.sort(key=lambda x: x[1], reverse=True)
 
-        lines = ["🏆 **刮刮乐欧皇榜**\n"]
+        lines = ["🏆 刮刮乐欧皇榜\n"]
         for idx, (uid, net) in enumerate(items, 1):
             medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(idx, f"{idx}.")
             display = f"用户{uid[-4:]}" if len(uid) > 4 else uid
@@ -625,7 +613,7 @@ class NteScratchCardPlugin(Star):
         self._user_balance[target_uid] += amount
         self._save_balance()
         yield event.plain_result(
-            f"💸 **发钱成功！**\n"
+            f"💸 发钱成功！\n"
             f"用户 {target_uid[-4:]} 获得 {_fmt_money(amount)} 方斯\n"
             f"当前余额: {_fmt_money(self._user_balance[target_uid])} 方斯"
         )
@@ -681,7 +669,7 @@ class NteScratchCardPlugin(Star):
         self._save_balance()
 
         yield event.plain_result(
-            f"💸 **转账成功！**\n"
+            f"💸 转账成功！\n"
             f"转出 {_fmt_money(amount)} 方斯 → 用户 {target_uid[-4:]}\n"
             f"💰 当前余额: {_fmt_money(self._user_balance[uid])} 方斯"
         )
