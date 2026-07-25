@@ -414,7 +414,7 @@ class NteScratchCardPlugin(Star):
             yield event.plain_result("\n".join(lines))
         else:
             # 多张：用合并转发
-            user_name = event.get_sender_name()
+            bot_uin = event.get_self_id()
             node_list = []
 
             for i in range(1, count + 1):
@@ -435,8 +435,8 @@ class NteScratchCardPlugin(Star):
                     f"已花: {_fmt_money(total_cost)}  已中: {_fmt_money(total_won_all)}  累计: {'+' if net_so_far >= 0 else ''}{_fmt_money(net_so_far)}"
                 )
                 node_list.append(Node(
-                    name=user_name,
-                    uin=uid,
+                    name="刮刮乐",
+                    uin=bot_uin,
                     content=[Plain(text=card_text)]
                 ))
 
@@ -457,8 +457,8 @@ class NteScratchCardPlugin(Star):
                 f"📅 今日剩余: {DAILY_LIMIT - stats['daily_bought']} / {DAILY_LIMIT} 张"
             )
             node_list.append(Node(
-                name="系统",
-                uin=uid,
+                name="刮刮乐",
+                uin=bot_uin,
                 content=[Plain(text=summary_text)]
             ))
 
