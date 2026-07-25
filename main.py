@@ -576,7 +576,7 @@ class NteScratchCardPlugin(Star):
         try:
             group = await event.get_group()
             if group and group.members:
-                group_uids = {m.user_id for m in group.members}
+                group_uids = {str(m.user_id) for m in group.members}
         except Exception:
             pass
 
@@ -599,7 +599,7 @@ class NteScratchCardPlugin(Star):
             group = await event.get_group()
             if group and group.members:
                 for m in group.members:
-                    name_map[m.user_id] = m.nickname
+                    name_map[str(m.user_id)] = m.nickname
         except Exception:
             pass
 
@@ -664,7 +664,7 @@ class NteScratchCardPlugin(Star):
             group = await event.get_group()
             if group and group.members:
                 for m in group.members:
-                    if m.user_id == target_uid and m.nickname:
+                    if str(m.user_id) == target_uid and m.nickname:
                         target_name = (m.nickname[:9] + "…") if len(m.nickname) > 10 else m.nickname
                         break
         except Exception:
@@ -732,7 +732,7 @@ class NteScratchCardPlugin(Star):
             group = await event.get_group()
             if group and group.members:
                 for m in group.members:
-                    if m.user_id == target_uid and m.nickname:
+                    if str(m.user_id) == target_uid and m.nickname:
                         target_name = (m.nickname[:9] + "…") if len(m.nickname) > 10 else m.nickname
                         break
         except Exception:
