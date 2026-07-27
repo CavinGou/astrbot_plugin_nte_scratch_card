@@ -576,7 +576,12 @@ class NteScratchCardPlugin(Star):
     @filter.command("富爪榜")
     async def leaderboard(self, event: AstrMessageEvent):
         """查看本群累计盈亏排行榜（不限数量）"""
-        if not self._user_stats:
+        # 检查是否有实际购买过卡片的用户
+        has_buyers = any(
+            s.get("cards_bought", 0) > 0
+            for s in self._user_stats.values()
+        )
+        if not has_buyers:
             yield event.plain_result("📭 暂无数据，快来 /刮刮乐 吧！")
             return
 
