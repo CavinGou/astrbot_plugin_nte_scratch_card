@@ -580,12 +580,16 @@ class NteScratchCardPlugin(Star):
             yield event.plain_result("📭 暂无数据，快来 /刮刮乐 吧！")
             return
 
-        # 获取当前群成员 ID 集合，用于群隔离
+        # 获取当前群成员信息（群隔离 + 群名片）
         group_uids = set()
+        name_map = {}
         try:
             group = await event.get_group()
             if group and group.members:
-                group_uids = {str(m.user_id) for m in group.members}
+                for m in group.members:
+                    uid = str(m.user_id)
+                    group_uids.add(uid)
+                    name_map[uid] = m.card or m.nickname
         except Exception:
             pass
 
@@ -601,16 +605,6 @@ class NteScratchCardPlugin(Star):
             return
 
         items.sort(key=lambda x: x[1], reverse=True)
-
-        # 实时获取群成员名片
-        name_map = {}
-        try:
-            group = await event.get_group()
-            if group and group.members:
-                for m in group.members:
-                    name_map[str(m.user_id)] = m.card or m.nickname
-        except Exception:
-            pass
 
         def _get_name(uid: str) -> str:
             raw = name_map.get(uid, "")
