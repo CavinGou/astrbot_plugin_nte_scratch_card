@@ -7,7 +7,9 @@ from datetime import date
 import json
 import random
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional, Tuple
+
+import aiohttp
 
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star, register
@@ -291,13 +293,18 @@ def _fmt_money(amount: int) -> str:
 class NteScratchCardPlugin(Star):
     """NTE 刮刮乐插件"""
 
-    def __init__(self, context: Context):
+    def __init__(self, context: Context, config: dict = None):
         super().__init__(context)
+        self.config = config or {}
         self.data_dir = Path("data/nte_scratch_card")
         self.data_dir.mkdir(parents=True, exist_ok=True)
 
         self._balance_path = self.data_dir / "balance.json"
         self._stats_path = self.data_dir / "stats.json"
+
+        # NapCat 配置
+        self.napcat_host = self.config.get("napcat_host", "127.0.0.1:3000")
+        self.napcat_token = self.config.get("napcat_token", "")
 
         # uid -> 余额
         self._user_balance: Dict[str, int] = {}
@@ -341,7 +348,45 @@ class NteScratchCardPlugin(Star):
                 "pension_date": "",
                 "cycle_order": [],
                 "cycle_pos": 0,
+                "group_id": "",
             }
+
+    # ----------------------------------------------------------
+    # NapCat API: 获取群成员信息
+    # ----------------------------------------------------------
+    async def _get_member_info(self, group_id: str, user_id: str) -> Tuple[Optional[dict], Optional[str]]:
+        """通过 NapCat API 获取群成员信息。返回 (data_dict, error)"""
+        try:
+            headers = {"Authorization": f"Bearer {self.napcat_token}"} if self.napcat_token else {}
+            payload = {"group_id": int(group_id), "user_id": int(user_id), "no_cache": False}
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"http://{self.napcat_host}/get_group_member_info",
+                    headers=headers, json=payload, timeout=10
+                ) as resp:
+                    data = await resp.json()
+                    if data.get("status") == "ok" and "data" in data:
+                        return data["data"], None
+                    return None, str(data)
+        except Exception as e:
+            return None, str(e)
+
+    async def _get_group_members(self, group_id: str) -> Tuple[Optional[List[dict]], Optional[str]]:
+        """通过 NapCat API 获取群成员列表。返回 (成员列表, error)"""
+        try:
+            headers = {"Authorization": f"Bearer {self.napcat_token}"} if self.napcat_token else {}
+            payload = {"group_id": int(group_id), "no_cache": False}
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"http://{self.napcat_host}/get_group_member_list",
+                    headers=headers, json=payload, timeout=15
+                ) as resp:
+                    data = await resp.json()
+                    if data.get("status") == "ok" and "data" in data:
+                        return data["data"], None
+                    return None, str(data)
+        except Exception as e:
+            return None, str(e)
 
     # ----------------------------------------------------------
     # 指令: /刮刮乐 [数量]  - 购买并立即刮开
@@ -351,6 +396,14 @@ class NteScratchCardPlugin(Star):
         """购买刮刮卡并立即刮开，支持一次多张：/刮刮乐 10"""
         uid = event.get_sender_id()
         self._ensure_user(uid)
+
+        # 记录用户所在群号
+        try:
+            gid = str(event.message_obj.group_id)
+            if gid:
+                self._user_stats[uid]["group_id"] = gid
+        except Exception:
+            pass
 
         # 解析数量
         args = event.message_str.strip().split()
@@ -585,25 +638,35 @@ class NteScratchCardPlugin(Star):
             yield event.plain_result("📭 暂无数据，快来 /刮刮乐 吧！")
             return
 
-        # 获取当前群成员信息（群隔离 + 群名片）
-        group_uids = set()
-        name_map = {}
+        # 获取当前群号，用于群隔离
+        current_group = ""
         try:
-            group = await event.get_group()
-            if group and group.members:
-                for m in group.members:
-                    uid = str(m.user_id)
-                    group_uids.add(uid)
-                    name_map[uid] = m.card or m.nickname
+            current_group = str(event.message_obj.group_id)
         except Exception:
             pass
 
-        # 按累计盈亏排序（总奖金 - 总投入），只看本群买过卡的
+        # 通过 NapCat API 获取当前群全部成员（含群名片），做跨群统一
+        group_uids = set()
+        name_map = {}
+        members_data, _ = await self._get_group_members(current_group)
+        if members_data:
+            for m in members_data:
+                uid = str(m.get("user_id", ""))
+                if uid:
+                    group_uids.add(uid)
+                    name_map[uid] = m.get("card") or m.get("nickname", "")
+        else:
+            # 拿不到成员列表时回退：通过 group_id 字段筛选
+            for uid, stats in self._user_stats.items():
+                if stats.get("group_id") == current_group:
+                    group_uids.add(uid)
+
+        # 筛选当前群买过卡的用户（跨群统一 — 按当前群成员列表而非刮卡时的群）
         items = [
             (uid, stats.get("total_won", 0) - stats.get("total_spent", 0))
             for uid, stats in self._user_stats.items()
             if stats.get("cards_bought", 0) > 0
-            and (not group_uids or uid in group_uids)
+            and uid in group_uids
         ]
         if not items:
             yield event.plain_result("📭 暂无数据，快来 /刮刮乐 吧！")
@@ -666,16 +729,16 @@ class NteScratchCardPlugin(Star):
         self._user_balance[target_uid] += amount
         self._save_balance()
 
-        # 获取目标用户群名片
+        # 通过 NapCat API 获取目标用户群名片
         target_name = target_uid[-4:]
         try:
-            group = await event.get_group()
-            if group and group.members:
-                for m in group.members:
-                    if str(m.user_id) == target_uid and (m.card or m.nickname):
-                        name = m.card or m.nickname
+            gid = str(event.message_obj.group_id)
+            if gid:
+                member_data, _ = await self._get_member_info(gid, target_uid)
+                if member_data:
+                    name = member_data.get("card") or member_data.get("nickname", "")
+                    if name:
                         target_name = (name[:9] + "…") if len(name) > 10 else name
-                        break
         except Exception:
             pass
 
@@ -735,16 +798,16 @@ class NteScratchCardPlugin(Star):
         self._user_balance[target_uid] += amount
         self._save_balance()
 
-        # 获取目标用户群名片
+        # 通过 NapCat API 获取目标用户群名片
         target_name = target_uid[-4:]
         try:
-            group = await event.get_group()
-            if group and group.members:
-                for m in group.members:
-                    if str(m.user_id) == target_uid and (m.card or m.nickname):
-                        name = m.card or m.nickname
+            gid = str(event.message_obj.group_id)
+            if gid:
+                member_data, _ = await self._get_member_info(gid, target_uid)
+                if member_data:
+                    name = member_data.get("card") or member_data.get("nickname", "")
+                    if name:
                         target_name = (name[:9] + "…") if len(name) > 10 else name
-                        break
         except Exception:
             pass
 
