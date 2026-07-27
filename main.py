@@ -482,9 +482,9 @@ class NteScratchCardPlugin(Star):
             "🎴 NTE 刮刮乐 - 帮助\n",
             "━━━ 指令列表 ━━━",
             f"/刮刮乐 [数量]  购买并刮开，默认1张，支持多张",
-            f"/刮取钱         每日随机领取方斯（30/50/70/100 顺序随机 每4天必得250w）",
+            f"/刮取钱         每日随机领取方斯（30/50/70/100 顺序随机 每4天得250w）",
             f"/刮余额         查看余额和游戏统计",
-            f"/富爪榜         累计盈亏排行榜前10",
+            f"/富爪榜         累计盈亏排行榜",
             f"/刮刮乐帮助     显示此帮助\n",
             "━━━ 介绍 ━━━",
             f"初始余额: 300万  |  每日限购: 60张",
@@ -620,9 +620,9 @@ class NteScratchCardPlugin(Star):
 
         lines = ["🏆 海特洛富爪榜\n"]
         for idx, (uid, net) in enumerate(items, 1):
-            medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(idx, f"{idx}.")
+            medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(idx, f" {idx}. " if idx < 10 else f"{idx}.")
             sign = "+" if net >= 0 else "-"
-            lines.append(f"{medal} {_get_name(uid)} — {sign}{_fmt_money(abs(net))} 方斯")
+            lines.append(f"{medal} {_get_name(uid)}   {sign}{_fmt_money(abs(net))} 方斯")
 
         yield event.plain_result("\n".join(lines))
 
