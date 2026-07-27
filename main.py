@@ -435,12 +435,10 @@ class NteScratchCardPlugin(Star):
 
                 board = _card_to_str(card)
                 prize_line = f"🎉 中奖 {_fmt_money(prize)} 方斯" if prize > 0 else "😅 未中奖"
-                net_so_far = stats["total_won"] - stats["total_spent"]
                 card_text = (
                     f"🎴 第 {i}/{count} 张\n"
                     f"{board}\n"
                     f"{prize_line}\n"
-                    f"已花: {_fmt_money(total_cost)}  已中: {_fmt_money(total_won_all)}  累计: {'+' if net_so_far >= 0 else ''}{_fmt_money(net_so_far)}"
                 )
                 node_list.append(Node(
                     name="刮刮乐",
