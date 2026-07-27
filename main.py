@@ -455,11 +455,13 @@ class NteScratchCardPlugin(Star):
             won_desc = f"🎉 中 {win_count}/{count} 张，共 {_fmt_money(total_won_all)} 方斯" if win_count > 0 else "😅 全部未中奖"
 
             # 添加汇总节点
+            batch_net = total_won_all - total_cost
             summary_text = (
                 f"📊 刮刮乐 × {count} 汇总\n"
                 f"{won_desc}\n"
-                f"💰 余额: {_fmt_money(self._user_balance[uid])} 方斯\n"
-                f"📊 累计: {'+' if net >= 0 else '-'}{_fmt_money(abs(net))}\n"
+                f"📊 本次收入: {'+' if batch_net >= 0 else '-'}{_fmt_money(abs(batch_net))} 方斯\n"
+                f"📊 累计收入: {'+' if net >= 0 else '-'}{_fmt_money(abs(net))} 方斯\n"
+                f"💰 当前余额: {_fmt_money(self._user_balance[uid])} 方斯\n"
                 f"📅 今日剩余: {DAILY_LIMIT - stats['daily_bought']} / {DAILY_LIMIT} 张"
             )
             node_list.append(Node(
