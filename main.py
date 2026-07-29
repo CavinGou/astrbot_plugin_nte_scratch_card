@@ -164,6 +164,14 @@ INITIAL_BALANCE = 3_000_000
 # 每日限购
 DAILY_LIMIT = 60
 
+# 刮取钱档位 [(金额, 描述), ...]
+PENSION_TIERS = [
+    (300000,  "管理局给娜娜莉的医疗补贴下来了，手头宽裕了些"),
+    (500000,  "雨燕出行跑了一天单，腰都要断了，赚点辛苦钱。"),
+    (700000,  "背着店长偷偷把伊波恩抵押了…发了笔小财！"),
+    (1000000, "赶上粉爪大劫案，浑水摸鱼捞了一笔，赶紧跑路！"),
+]
+
 
 # ----------------------------------------------------------
 # 卡片生成（基于精确概率分布）
@@ -306,6 +314,13 @@ class NteScratchCardPlugin(Star):
         self.napcat_host = self.config.get("napcat_host", "127.0.0.1:3000")
         self.napcat_token = self.config.get("napcat_token", "")
 
+        # 每日限购（从配置读取，默认 60）
+        self._daily_limit = max(1, int(self.config.get("daily_limit", DAILY_LIMIT)))
+
+        # 刮取钱档位（从配置读取，回退到代码常量）
+        self._pension_tiers = self._parse_pension_tiers(
+            self.config.get("pension_tiers", []))
+
         # uid -> 余额
         self._user_balance: Dict[str, int] = {}
         # uid -> {total_spent, total_won, cards_bought, cards_won}
@@ -330,6 +345,24 @@ class NteScratchCardPlugin(Star):
         self._balance_path.write_text(
             json.dumps(self._user_balance, ensure_ascii=False), "utf-8")
 
+    def _parse_pension_tiers(self, raw) -> List[Tuple[int, str]]:
+        """解析配置中的取钱档位为 [(金额, 描述), ...]"""
+        if not raw or not isinstance(raw, list):
+            return list(PENSION_TIERS)
+        try:
+            tiers = []
+            for item in raw:
+                if not isinstance(item, dict):
+                    continue
+                amount = int(item.get("amount", 0))
+                desc = str(item.get("desc", "")).strip()
+                if amount <= 0 or not desc:
+                    continue
+                tiers.append((amount, desc))
+            return tiers if len(tiers) >= 2 else list(PENSION_TIERS)
+        except Exception:
+            return list(PENSION_TIERS)
+
     def _save_stats(self):
         self._stats_path.write_text(
             json.dumps(self._user_stats, ensure_ascii=False), "utf-8")
@@ -345,6 +378,7 @@ class NteScratchCardPlugin(Star):
                 "cards_won": 0,
                 "daily_date": "",
                 "daily_bought": 0,
+                "daily_extra": 0,
                 "pension_date": "",
                 "cycle_order": [],
                 "cycle_pos": 0,
@@ -423,7 +457,8 @@ class NteScratchCardPlugin(Star):
             stats["daily_date"] = today
             stats["daily_bought"] = 0
 
-        remaining_daily = DAILY_LIMIT - stats["daily_bought"]
+        total_daily = self._daily_limit + stats.get("daily_extra", 0)
+        remaining_daily = total_daily - stats["daily_bought"]
         if count > remaining_daily:
             yield event.plain_result(
                 f"❌ 今日剩余 {remaining_daily} 张，不够买 {count} 张！"
@@ -464,13 +499,14 @@ class NteScratchCardPlugin(Star):
             self._save_stats()
             net = stats["total_won"] - stats["total_spent"]
 
+            remaining_now = total_daily - stats["daily_bought"]
             lines = [
                 f"🎴 刮刮乐",
                 board,
                 prize_line,
                 f"",
                 f"💰 余额: {_fmt_money(self._user_balance[uid])} 方斯  |  📊 {'+' if net >= 0 else '-'}{_fmt_money(abs(net))}",
-                f"📅 今日剩余: {DAILY_LIMIT - stats['daily_bought']} / {DAILY_LIMIT} 张",
+                f"📅 今日剩余: {remaining_now} / {total_daily} 张",
             ]
             yield event.plain_result("\n".join(lines))
         else:
@@ -508,6 +544,7 @@ class NteScratchCardPlugin(Star):
             won_desc = f"🎉 中 {win_count}/{count} 张，共 {_fmt_money(total_won_all)} 方斯" if win_count > 0 else "😅 全部未中奖"
 
             # 添加汇总节点
+            remaining_now = total_daily - stats["daily_bought"]
             batch_net = total_won_all - total_cost
             summary_text = (
                 f"📊 刮刮乐 × {count} 汇总\n"
@@ -515,7 +552,7 @@ class NteScratchCardPlugin(Star):
                 f"📊 本次收入: {'+' if batch_net >= 0 else '-'}{_fmt_money(abs(batch_net))} 方斯\n"
                 f"📊 累计收入: {'+' if net >= 0 else '-'}{_fmt_money(abs(net))} 方斯\n"
                 f"💰 当前余额: {_fmt_money(self._user_balance[uid])} 方斯\n"
-                f"📅 今日剩余: {DAILY_LIMIT - stats['daily_bought']} / {DAILY_LIMIT} 张"
+                f"📅 今日剩余: {remaining_now} / {total_daily} 张"
             )
             node_list.append(Node(
                 name="刮刮乐",
@@ -535,12 +572,12 @@ class NteScratchCardPlugin(Star):
             "🎴 NTE 刮刮乐 - 帮助\n",
             "━━━ 指令列表 ━━━",
             f"/刮刮乐 [数量]  购买并刮开，默认1张，支持多张",
-            f"/刮取钱         每日随机领取方斯（30/50/70/100 顺序随机 每4天得250w）",
+            f"/刮取钱         每日随机领取方斯（{len(self._pension_tiers)}档循环，发完重洗）",
             f"/刮余额         查看余额和游戏统计",
             f"/富爪榜         累计盈亏排行榜",
             f"/刮刮乐帮助     显示此帮助\n",
             "━━━ 介绍 ━━━",
-            f"初始余额: 300万  |  每日限购: 60张",
+            f"初始余额: 300万  |  每日限购: {self._daily_limit}张",
             f"售价: 50,000 方斯  |  格子: 3×5  |  最高奖: 250万",
         ]
         yield event.plain_result("\n".join(lines))
@@ -562,24 +599,16 @@ class NteScratchCardPlugin(Star):
             )
             return
 
-        # 四个档位
-        tiers = [
-            (300000,  "管理局给娜娜莉的医疗补贴下来了，手头宽裕了些"),
-            (500000,  "雨燕出行跑了一天单，腰都要断了，赚点辛苦钱。"),
-            (700000,  "背着店长偷偷把伊波恩抵押了…发了笔小财！"),
-            (1000000, "赶上粉爪大劫案，浑水摸鱼捞了一笔，赶紧跑路！"),
-        ]
-
         # 初始化或重新洗牌
         cycle_order = stats.get("cycle_order", [])
         cycle_pos = stats.get("cycle_pos", 0)
-        if not cycle_order or cycle_pos >= len(cycle_order):
-            cycle_order = list(range(len(tiers)))
+        if not cycle_order or cycle_pos >= len(self._pension_tiers):
+            cycle_order = list(range(len(self._pension_tiers)))
             random.shuffle(cycle_order)
             cycle_pos = 0
 
         idx = cycle_order[cycle_pos]
-        amount, msg = tiers[idx]
+        amount, msg = self._pension_tiers[idx]
 
         stats["pension_date"] = today
         stats["cycle_order"] = cycle_order
@@ -609,11 +638,14 @@ class NteScratchCardPlugin(Star):
         win_rate = (stats["cards_won"] / stats["cards_bought"] * 100
                     if stats["cards_bought"] > 0 else 0)
 
+        total_daily = self._daily_limit + stats.get("daily_extra", 0)
+        remaining = total_daily - stats.get("daily_bought", 0)
+
         lines = [
             "📊 个人数据\n",
             f"💰 余额: {_fmt_money(balance)} 方斯",
             f"📈 累计盈亏: {'+' if net >= 0 else '-'}{_fmt_money(abs(net))} 方斯",
-            f"📅 今日剩余: {DAILY_LIMIT - stats.get('daily_bought', 0)} / {DAILY_LIMIT} 张",
+            f"📅 今日剩余: {remaining} / {total_daily} 张",
             "",
             f"🎴 购买次数: {stats['cards_bought']} 张",
             f"🏆 中奖次数: {stats['cards_won']} 次",
@@ -746,6 +778,75 @@ class NteScratchCardPlugin(Star):
             f"💸 发钱成功！\n"
             f"{target_name} 获得 {_fmt_money(amount)} 方斯\n"
             f"当前余额: {_fmt_money(self._user_balance[target_uid])} 方斯"
+        )
+
+    # ----------------------------------------------------------
+    # 指令: /刮发卡 [数量] @用户  - 管理员发额外卡次数
+    # ----------------------------------------------------------
+    @filter.command("刮发卡")
+    async def give_extra_cards(self, event: AstrMessageEvent):
+        """管理员给指定用户增加今日可购买的卡次数"""
+        if event.role != "admin":
+            yield event.plain_result("❌ 仅管理员可使用此指令")
+            return
+
+        # 解析目标用户
+        target_uid = None
+        for comp in event.get_messages():
+            if isinstance(comp, At):
+                target_uid = str(comp.qq)
+                break
+
+        if not target_uid:
+            yield event.plain_result("❌ 请 @ 要发卡的用户")
+            return
+
+        # 解析数量
+        args = event.message_str.strip().split()
+        extra = 1
+        for a in args:
+            try:
+                extra = int(a)
+                break
+            except ValueError:
+                continue
+
+        if extra < 1:
+            extra = 1
+
+        self._ensure_user(target_uid)
+        stats = self._user_stats[target_uid]
+
+        # 如果是新的一天，先重置
+        today = date.today().isoformat()
+        if stats.get("daily_date") != today:
+            stats["daily_date"] = today
+            stats["daily_bought"] = 0
+
+        # 累加额外次数
+        stats["daily_extra"] = stats.get("daily_extra", 0) + extra
+        self._save_stats()
+
+        # 获取昵称
+        target_name = target_uid[-4:]
+        try:
+            gid = str(event.message_obj.group_id)
+            if gid:
+                member_data, _ = await self._get_member_info(gid, target_uid)
+                if member_data:
+                    name = member_data.get("card") or member_data.get("nickname", "")
+                    if name:
+                        target_name = (name[:9] + "…") if len(name) > 10 else name
+        except Exception:
+            pass
+
+        total_daily = self._daily_limit + stats["daily_extra"]
+        remaining = total_daily - stats["daily_bought"]
+
+        yield event.plain_result(
+            f"🎴 发卡成功！\n"
+            f"{target_name} 获得 +{extra} 张额外额度\n"
+            f"📅 今日可购: {remaining} / {total_daily} 张"
         )
 
     # ----------------------------------------------------------
