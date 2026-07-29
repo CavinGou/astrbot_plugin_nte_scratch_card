@@ -304,8 +304,7 @@ class NteScratchCardPlugin(Star):
     def __init__(self, context: Context, config: dict = None):
         super().__init__(context)
         self.config = config or {}
-        self.data_dir = Path("data/nte_scratch_card")
-        self.data_dir.mkdir(parents=True, exist_ok=True)
+        self.data_dir = self.get_data_dir("astrbot_plugin_nte_scratch_card")
 
         self._balance_path = self.data_dir / "balance.json"
         self._stats_path = self.data_dir / "stats.json"
@@ -602,8 +601,12 @@ class NteScratchCardPlugin(Star):
         # 初始化或重新洗牌
         cycle_order = stats.get("cycle_order", [])
         cycle_pos = stats.get("cycle_pos", 0)
-        if not cycle_order or cycle_pos >= len(self._pension_tiers):
-            cycle_order = list(range(len(self._pension_tiers)))
+        tiers_len = len(self._pension_tiers)
+        # 如果档位数量变了（配置修改过），也强制重置
+        if (not cycle_order or cycle_pos >= tiers_len
+                or len(cycle_order) != tiers_len
+                or any(i >= tiers_len for i in cycle_order)):
+            cycle_order = list(range(tiers_len))
             random.shuffle(cycle_order)
             cycle_pos = 0
 
