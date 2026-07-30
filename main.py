@@ -16,6 +16,7 @@ from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star, register
 from astrbot.api import logger
 from astrbot.api.message_components import Node, Nodes, Plain, At
+from astrbot.core.utils.astrbot_path import get_astrbot_data_path
 
 
 # ============================================================
