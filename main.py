@@ -15,6 +15,7 @@ from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star, register
 from astrbot.api import logger
 from astrbot.api.message_components import Node, Nodes, Plain, At
+from astrbot.core.utils.astrbot_path import get_astrbot_data_path
 
 
 # ============================================================
@@ -212,7 +213,7 @@ class NteScratchCardPlugin(Star):
     def __init__(self, context: Context, config: dict = None):
         super().__init__(context)
         self.config = config or {}
-        self.data_dir = self.get_data_dir("astrbot_plugin_nte_scratch_card")
+        self.data_dir = Path(get_astrbot_data_path()) / "plugin_data" / self.name
 
         self._balance_path = self.data_dir / "balance.json"
         self._stats_path = self.data_dir / "stats.json"
