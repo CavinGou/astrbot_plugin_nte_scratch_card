@@ -723,7 +723,7 @@ class NteScratchCardPlugin(Star):
                 "total": len(items),
                 "items": rows_data,
                 "coin_icon": coin_data_uri,
-            }, options={"type": "png", "full_page": False})
+            }, options={"type": "png"})
             yield event.image_result(url)
             return
         except Exception as e:
