@@ -204,10 +204,13 @@ def _fmt_money(amount: int) -> str:
 # 排行榜 HTML 模板
 # ----------------------------------------------------------
 LEADERBOARD_HTML = """<!DOCTYPE html>
-<html><head><meta charset="utf-8"><style>
-@import url('https://cdn.jsdelivr.net/npm/misans@4.003/lib/Normal/MiSans-Normal.min.css');
+<html><head><meta charset="utf-8">
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/misans@4.1.0/lib/Normal/MiSans-Medium.min.css" /> 
+<link rel="stylesheet" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/misans@4.1.0/lib/Normal/MiSans-Bold.min.css" />
+<style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:"MiSans","Microsoft YaHei",sans-serif;background:linear-gradient(180deg,#232225,#FFF584);width:840px;padding:16px}
+body{font-family:"MiSans",sans-serif;background:linear-gradient(180deg,#232225,#FFF584);width:840px;padding:16px}
 .title{text-align:right;font-size:42px;font-weight:1000;transform:skewX(-7deg);color:#F0C954;padding:8px 16px 12px 0}
 .header{display:flex;align-items:center;background:linear-gradient(180deg,#3a3020,#2a2218);border:1px solid rgba(0,0,0,.1);border-radius:12px;margin-bottom:12px}
 .header div{font-size:20px;font-weight:700;color:#D2D2D2;-webkit-text-stroke:#000000 1px}
@@ -719,7 +722,7 @@ class NteScratchCardPlugin(Star):
                 "total": len(items),
                 "items": rows_data,
                 "coin_icon": coin_data_uri,
-            })
+            }, options={"type": "png", "full_page": False})
             yield event.image_result(url)
             return
         except Exception as e:
