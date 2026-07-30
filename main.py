@@ -7,7 +7,7 @@ from datetime import date
 import json
 import random
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import aiohttp
 
@@ -188,14 +188,44 @@ def _card_to_str(card_data: dict) -> str:
 
 
 def _fmt_money(amount: int) -> str:
-    """格式化金额"""
-    s = str(amount)
+    """格式化金额，支持负数"""
+    sign = "-" if amount < 0 else ""
+    s = str(abs(amount))
     result = []
     for i, ch in enumerate(reversed(s)):
         if i > 0 and i % 3 == 0:
             result.append(",")
         result.append(ch)
-    return "".join(reversed(result))
+    return sign + "".join(reversed(result))
+
+
+# ----------------------------------------------------------
+# 排行榜 HTML 模板
+# ----------------------------------------------------------
+LEADERBOARD_HTML = """<!DOCTYPE html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="assets/leaderboard.css"></head><body>
+<div class="outer-frame">
+<div class="title">富爪榜</div>
+<div class="header">
+    <div class="h-rank"><span>排名</span></div>
+    <div class="h-name"><span>名称</span></div>
+    <div class="h-money"><span>财富值</span></div>
+</div>
+{% for item in items %}
+<div class="card card-normal {% if item.rank <= 3 %}card-r{{ item.rank }}{% endif %}">
+    <div class="row">
+        <div class="badge"><div class="num">{{ item.rank }}</div></div>
+        <div class="name-section">
+            <div class="id-text"><span class="id-prefix">NTE</span> NO.{{ '%06d' % item.uid_int if item.uid_int else '000000' }}</div>
+            <div class="name-text">{{ item.name }}</div>
+            <div class="barcode"></div>
+        </div>
+        <div class="money-section"><img src="assets/fons.png" alt="Coin" class="coin-icon"><div class="money-text">{{ item.amount }}</div></div>
+    </div>
+</div>
+{% endfor %}
+</div>
+</body></html>"""
 
 
 # ============================================================
@@ -624,6 +654,32 @@ class NteScratchCardPlugin(Star):
                 return uid[-4:]
             return (raw[:9] + "…") if len(raw) > 10 else raw
 
+        # 用 HTML 模板渲染排行榜图片
+        try:
+            rows_data = []
+            for idx, (uid, net) in enumerate(items, 1):
+                name = _get_name(uid)
+                try:
+                    uid_int = int(uid)
+                except (ValueError, TypeError):
+                    uid_int = 0
+                rows_data.append({
+                    "rank": idx,
+                    "name": name,
+                    "net": net,
+                    "amount": _fmt_money(net),
+                    "uid_int": uid_int,
+                })
+            url = await self.html_render(LEADERBOARD_HTML, {
+                "total": len(items),
+                "items": rows_data,
+            })
+            yield event.image_result(url)
+            return
+        except Exception as e:
+            logger.error(f"排行榜生图失败: {e}")
+
+        # 回退文本榜
         lines = ["🏆 海特洛富爪榜\n"]
         for idx, (uid, net) in enumerate(items, 1):
             medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(idx, f" {idx}. " if idx < 10 else f"{idx}.")
