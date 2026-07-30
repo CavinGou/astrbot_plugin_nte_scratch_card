@@ -3,27 +3,33 @@
     "type": "template_list",
     "description": "刮取钱档位列表",
     "hint": "档位顺序随机，一轮发完自动重洗。",
+    "obvious_hint": true,
     "default": [
-      {"amount": 300000, "desc": "管理局给娜娜莉的医疗补贴下来了，手头宽裕了些"},
-      {"amount": 500000, "desc": "雨燕出行跑了一天单，腰都要断了，赚点辛苦钱。"},
-      {"amount": 700000, "desc": "背着店长偷偷把伊波恩抵押了…发了笔小财！"},
-      {"amount": 1000000, "desc": "赶上粉爪大劫案，浑水摸鱼捞了一笔，赶紧跑路！"}
+      {"__template_key": "pension", "amount": 300000, "desc": "管理局给娜娜莉的医疗补贴下来了，手头宽裕了些"},
+      {"__template_key": "pension", "amount": 500000, "desc": "雨燕出行跑了一天单，腰都要断了，赚点辛苦钱。"},
+      {"__template_key": "pension", "amount": 700000, "desc": "背着店长偷偷把伊波恩抵押了…发了笔小财！"},
+      {"__template_key": "pension", "amount": 1000000, "desc": "赶上粉爪大劫案，浑水摸鱼捞了一笔，赶紧跑路！"}
     ],
-    "template_schema": {
-      "amount": {
-        "name": "金额",
-        "type": "int",
-        "default": 500000,
-        "description": "领取金额（方斯）"
-      },
-      "desc": {
-        "name": "描述",
-        "type": "string",
-        "default": "领钱了！",
-        "description": "领取时的描述文案"
+    "templates": {
+      "pension": {
+        "name": "刮取钱档位",
+        "display_item": "desc",
+        "items": {
+          "amount": {
+            "name": "金额",
+            "type": "int",
+            "default": 500000,
+            "description": "领取金额（方斯）"
+          },
+          "desc": {
+            "name": "描述",
+            "type": "string",
+            "default": "领钱了！",
+            "description": "领取时的描述文案"
+          }
+        }
       }
-    },
-    "obvious_hint": true
+    }
   },
   "daily_limit": {
     "type": "int",
