@@ -210,6 +210,7 @@ LEADERBOARD_HTML = """<!DOCTYPE html>
 <link rel="stylesheet" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/misans@4.1.0/lib/Normal/MiSans-Bold.min.css" />
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
+html,body{height:fit-content}
 body{font-family:"MiSans",sans-serif;width:840px;}
 .outer-frame{background: linear-gradient(180deg, #232225, #FFF584);width: 840px;padding: 16px;}
 .title{text-align:right;font-size:42px;font-weight:1000;transform:skewX(-7deg);color:#F0C954;padding:8px 16px 12px 0}
@@ -439,6 +440,7 @@ class NteScratchCardPlugin(Star):
         if stats.get("daily_date") != today:
             stats["daily_date"] = today
             stats["daily_bought"] = 0
+            stats["daily_extra"] = 0
 
         total_daily = self._daily_limit + stats.get("daily_extra", 0)
         remaining_daily = total_daily - stats["daily_bought"]
@@ -621,6 +623,15 @@ class NteScratchCardPlugin(Star):
 
         balance = self._user_balance[uid]
         stats = self._user_stats[uid]
+
+        # 跨天后重置每日限购
+        today = date.today().isoformat()
+        if stats.get("daily_date") != today:
+            stats["daily_date"] = today
+            stats["daily_bought"] = 0
+            stats["daily_extra"] = 0
+            self._save_stats()
+
         net = stats["total_won"] - stats["total_spent"]
         win_rate = (stats["cards_won"] / stats["cards_bought"] * 100
                     if stats["cards_bought"] > 0 else 0)
@@ -840,6 +851,7 @@ class NteScratchCardPlugin(Star):
         if stats.get("daily_date") != today:
             stats["daily_date"] = today
             stats["daily_bought"] = 0
+            stats["daily_extra"] = 0
 
         # 累加额外次数
         stats["daily_extra"] = stats.get("daily_extra", 0) + extra
