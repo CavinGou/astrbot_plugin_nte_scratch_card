@@ -250,7 +250,7 @@ body{font-family:"MiSans",sans-serif;width:840px;}
 .card-r3 .badge{background:linear-gradient(180deg,#c08040,#7a4a20)}
 </style></head><body>
 <div class="outer-frame">
-<div class="title">富爪榜</div>
+<div class="title">{{ title }}</div>
 <div class="header">
     <div class="h-rank"><span>排名</span></div>
     <div class="h-name"><span>名称</span></div>
@@ -362,6 +362,9 @@ class NteScratchCardPlugin(Star):
                 "daily_date": "",
                 "daily_bought": 0,
                 "daily_extra": 0,
+                "daily_spent": 0,
+                "daily_won": 0,
+                "daily_cards_won": 0,
                 "pension_date": "",
                 "cycle_order": [],
                 "cycle_pos": 0,
@@ -440,6 +443,9 @@ class NteScratchCardPlugin(Star):
             stats["daily_date"] = today
             stats["daily_bought"] = 0
             stats["daily_extra"] = 0
+            stats["daily_spent"] = 0
+            stats["daily_won"] = 0
+            stats["daily_cards_won"] = 0
 
         total_daily = self._daily_limit + stats.get("daily_extra", 0)
         remaining_daily = total_daily - stats["daily_bought"]
@@ -463,6 +469,7 @@ class NteScratchCardPlugin(Star):
         stats["total_spent"] += total_cost
         stats["cards_bought"] += count
         stats["daily_bought"] += count
+        stats["daily_spent"] += total_cost
 
         total_won_all = 0
         win_count = 0
@@ -474,11 +481,13 @@ class NteScratchCardPlugin(Star):
             total_won_all = prize
             win_count = 1 if prize > 0 else 0
             stats["total_won"] += prize
+            stats["daily_won"] += prize
 
             board = _card_to_str(card)
             prize_line = f"🎉 中奖 {_fmt_money(prize)} 方斯！" if prize > 0 else "😅 未中奖"
             self._user_balance[uid] += prize
             stats["cards_won"] += win_count
+            stats["daily_cards_won"] += win_count
             self._save_balance()
             self._save_stats()
             net = stats["total_won"] - stats["total_spent"]
@@ -505,6 +514,7 @@ class NteScratchCardPlugin(Star):
                 if prize > 0:
                     win_count += 1
                 stats["total_won"] += prize
+                stats["daily_won"] += prize
 
                 board = _card_to_str(card)
                 prize_line = f"🎉 中奖 {_fmt_money(prize)} 方斯" if prize > 0 else "😅 未中奖"
@@ -522,6 +532,7 @@ class NteScratchCardPlugin(Star):
             # 发奖
             self._user_balance[uid] += total_won_all
             stats["cards_won"] += win_count
+            stats["daily_cards_won"] += win_count
             self._save_balance()
             self._save_stats()
             net = stats["total_won"] - stats["total_spent"]
@@ -559,6 +570,7 @@ class NteScratchCardPlugin(Star):
             f"/刮取钱         每日随机领取方斯（{len(self._pension_tiers)}档循环，发完重洗）",
             f"/刮余额         查看余额和游戏统计",
             f"/富爪榜         累计盈亏排行榜",
+            f"/富爪日榜       今日盈亏排行榜",
             f"/刮刮乐帮助     显示此帮助\n",
             "━━━ 介绍 ━━━",
             f"初始余额: 300万  |  每日限购: {self._daily_limit}张",
@@ -629,6 +641,9 @@ class NteScratchCardPlugin(Star):
             stats["daily_date"] = today
             stats["daily_bought"] = 0
             stats["daily_extra"] = 0
+            stats["daily_spent"] = 0
+            stats["daily_won"] = 0
+            stats["daily_cards_won"] = 0
             self._save_stats()
 
         net = stats["total_won"] - stats["total_spent"]
@@ -730,6 +745,7 @@ class NteScratchCardPlugin(Star):
             coin_b64 = base64.b64encode(coin_png.read_bytes()).decode()
             coin_data_uri = f"data:image/png;base64,{coin_b64}"
             url = await self.html_render(LEADERBOARD_HTML, {
+                "title": "富爪榜",
                 "total": len(items),
                 "items": rows_data,
                 "coin_icon": coin_data_uri,
@@ -741,6 +757,105 @@ class NteScratchCardPlugin(Star):
 
         # 回退文本榜
         lines = ["🏆 海特洛富爪榜\n"]
+        for idx, (uid, net) in enumerate(items, 1):
+            medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(idx, f" {idx}. " if idx < 10 else f"{idx}.")
+            sign = "+" if net >= 0 else "-"
+            lines.append(f"{medal} {_get_name(uid)}   {sign}{_fmt_money(abs(net))} 方斯")
+
+        yield event.plain_result("\n".join(lines))
+
+    # ----------------------------------------------------------
+    # 指令: /富爪日榜  - 今日盈亏排行榜
+    # ----------------------------------------------------------
+    @filter.command("富爪日榜")
+    async def daily_leaderboard(self, event: AstrMessageEvent):
+        """查看本群今日盈亏排行榜"""
+        today = date.today().isoformat()
+
+        # 检查今天是否有刮过卡的用户
+        has_buyers = any(
+            s.get("daily_date") == today and s.get("daily_spent", 0) > 0
+            for s in self._user_stats.values()
+        )
+        if not has_buyers:
+            yield event.plain_result("📭 今天还没有人刮卡，快来 /刮刮乐 吧！")
+            return
+
+        # 获取当前群号，用于群隔离
+        current_group = ""
+        try:
+            current_group = str(event.message_obj.group_id)
+        except Exception:
+            pass
+
+        # 通过 NapCat API 获取当前群全部成员（含群名片），做跨群统一
+        group_uids = set()
+        name_map = {}
+        members_data, _ = await self._get_group_members(current_group)
+        if members_data:
+            for m in members_data:
+                uid = str(m.get("user_id", ""))
+                if uid:
+                    group_uids.add(uid)
+                    name_map[uid] = m.get("card") or m.get("nickname", "")
+        else:
+            # 拿不到成员列表时回退：通过 group_id 字段筛选
+            for uid, stats in self._user_stats.items():
+                if stats.get("group_id") == current_group:
+                    group_uids.add(uid)
+
+        # 筛选当前群今天刮过卡的用户，按今日盈亏排序
+        items = [
+            (uid, stats.get("daily_won", 0) - stats.get("daily_spent", 0))
+            for uid, stats in self._user_stats.items()
+            if stats.get("daily_date") == today
+            and stats.get("daily_spent", 0) > 0
+            and uid in group_uids
+        ]
+        if not items:
+            yield event.plain_result("📭 今天还没有人刮卡，快来 /刮刮乐 吧！")
+            return
+
+        items.sort(key=lambda x: x[1], reverse=True)
+
+        def _get_name(uid: str) -> str:
+            raw = name_map.get(uid, "")
+            if not raw:
+                return uid[-4:]
+            return (raw[:9] + "…") if len(raw) > 10 else raw
+
+        # 用 HTML 模板渲染排行榜图片
+        try:
+            rows_data = []
+            for idx, (uid, net) in enumerate(items, 1):
+                name = _get_name(uid)
+                try:
+                    uid_int = int(uid)
+                except (ValueError, TypeError):
+                    uid_int = 0
+                rows_data.append({
+                    "rank": idx,
+                    "name": name,
+                    "net": net,
+                    "amount": _fmt_money(net),
+                    "uid_int": uid_int,
+                })
+            coin_png = Path(__file__).resolve().parent / "assets" / "fons.png"
+            coin_b64 = base64.b64encode(coin_png.read_bytes()).decode()
+            coin_data_uri = f"data:image/png;base64,{coin_b64}"
+            url = await self.html_render(LEADERBOARD_HTML, {
+                "title": "富爪日榜",
+                "total": len(items),
+                "items": rows_data,
+                "coin_icon": coin_data_uri,
+            }, options={"type": "jpeg", "quality": 100})
+            yield event.image_result(url)
+            return
+        except Exception as e:
+            logger.error(f"日榜生图失败: {e}")
+
+        # 回退文本榜
+        lines = ["🏆 海特洛富爪日榜\n"]
         for idx, (uid, net) in enumerate(items, 1):
             medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(idx, f" {idx}. " if idx < 10 else f"{idx}.")
             sign = "+" if net >= 0 else "-"
@@ -851,6 +966,9 @@ class NteScratchCardPlugin(Star):
             stats["daily_date"] = today
             stats["daily_bought"] = 0
             stats["daily_extra"] = 0
+            stats["daily_spent"] = 0
+            stats["daily_won"] = 0
+            stats["daily_cards_won"] = 0
 
         # 累加额外次数
         stats["daily_extra"] = stats.get("daily_extra", 0) + extra
