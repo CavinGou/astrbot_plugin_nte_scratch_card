@@ -22,7 +22,6 @@ from astrbot.core.utils.astrbot_path import get_astrbot_data_path
 # ============================================================
 # 卡片配置（唯一档位：5 万方斯）
 # ============================================================
-CARD_EMOJI = "🟣"
 CARD_COST = 50000
 CARD_POSITIONS = 15
 CARD_MAX_PRIZE = 2500000
@@ -176,7 +175,7 @@ def _prize_label(amount: int) -> str:
 def _card_to_str(card_data: dict) -> str:
     """将卡片格式化为文本（纯文本，无制表符）"""
     grid = _card_grid(card_data["cells"])
-    lines = [f"{CARD_EMOJI} 刮刮卡"]
+    lines = []
     for row in grid:
         parts = []
         for c in row:
