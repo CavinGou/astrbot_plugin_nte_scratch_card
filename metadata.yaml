@@ -1,6 +1,16 @@
 name: astrbot_plugin_nte_scratch_card
 display_name: 异环刮刮乐
+short_desc: 复刻异环的刮刮乐玩法，购买刮刮卡赢取方斯，支持排行榜、转账与管理员发钱/发卡。
 desc: 异环游戏的刮刮乐玩法。购买刮刮卡赢取奖金，每日随机领取方斯福利，支持排行榜、转账、管理员发钱/发卡，每日限购和取钱档位均可配置。
+category: 娱乐
 version: v1.0.0
 author: CavinGou
 repo: https://github.com/CavinGou/astrbot_plugin_nte_scratch_card
+social_link: https://github.com/CavinGou
+support_platforms:
+  - aiocqhttp
+astrbot_version: ">=4.17.0"
+tags:
+  - 异环
+  - 刮刮乐
+  - 排行榜
