@@ -66,6 +66,7 @@
 |--------|------|--------|------|
 | `pension_tiers` | 列表 | 30/50/70/100 万方斯 | 刮取钱档位，可自定义金额与领取文案 |
 | `daily_limit` | 整数 | 60 | 每人每日限购张数 |
+| `leaderboard_inactive_days` | 整数 | 7 | 富爪榜排除 N 天以上没抽过卡的用户，0 表示不过滤 |
 | `napcat_host` | 字符串 | `127.0.0.1:3000` | NapCat 连接地址，多个地址用逗号分隔 |
 | `napcat_token` | 字符串 | 空 | NapCat API Token |
 
@@ -77,6 +78,7 @@
 
 - 使用 `HTML + Jinja2` 模板渲染，调用 AstrBot 的 HTML 渲染服务（t2i / htmlrender）。
 - 渲染服务不可用或渲染失败时，会自动**回退为纯文本排行榜**，不影响功能使用。
+- `富爪榜` 默认会排除超过 **7 天**未抽卡的用户（可通过配置 `leaderboard_inactive_days` 调整，设为 `0` 不过滤）。
 - 相关文档：[AstrBot 文转图（HTML 渲染）](https://docs.astrbot.app/dev/star/guides/html-to-pic.html)
 
 ## 平台支持
