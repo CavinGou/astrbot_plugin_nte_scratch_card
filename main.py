@@ -280,7 +280,7 @@ body{font-family:"MiSans",sans-serif;width:840px;}
     "nte_scratch_card",
     "CavinGou",
     "复刻 NTE 游戏的刮刮乐玩法",
-    "1.0.0",
+    "1.1.0",
 )
 class NteScratchCardPlugin(Star):
     """NTE 刮刮乐插件"""
