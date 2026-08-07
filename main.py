@@ -538,22 +538,22 @@ class NteScratchCardPlugin(Star):
             net = stats["total_won"] - stats["total_spent"]
             won_desc = f"🎉 中 {win_count}/{count} 张，共 {_fmt_money(total_won_all)} 方斯" if win_count > 0 else "😅 全部未中奖"
 
-            # 添加汇总节点
+            # 汇总每项拆成单条消息（作为合并转发最前的一组节点）
             remaining_now = total_daily - stats["daily_bought"]
             batch_net = total_won_all - total_cost
-            summary_text = (
-                f"📊 刮刮乐 × {count} 汇总\n"
-                f"{won_desc}\n"
-                f"📊 本次收入: {'+' if batch_net >= 0 else '-'}{_fmt_money(abs(batch_net))} 方斯\n"
-                f"📊 累计收入: {'+' if net >= 0 else '-'}{_fmt_money(abs(net))} 方斯\n"
-                f"💰 当前余额: {_fmt_money(self._user_balance[uid])} 方斯\n"
-                f"📅 今日剩余: {remaining_now} / {total_daily} 张"
-            )
-            node_list.append(Node(
-                name="刮刮乐",
-                uin=bot_uin,
-                content=[Plain(text=summary_text)]
-            ))
+            summary_lines = [
+                won_desc,
+                f"📊 本次收入: {'+' if batch_net >= 0 else '-'}{_fmt_money(abs(batch_net))} 方斯",
+                f"📊 累计收入: {'+' if net >= 0 else '-'}{_fmt_money(abs(net))} 方斯",
+                f"� 今日剩余: {remaining_now} / {total_daily} 张",
+                f"💰 当前余额: {_fmt_money(self._user_balance[uid])} 方斯",
+            ]
+            summary_nodes = [
+                Node(name="刮刮乐", uin=bot_uin, content=[Plain(text=line)])
+                for line in summary_lines
+            ]
+            # 汇总各项在前，后面再分各张
+            node_list = summary_nodes + node_list
 
             yield event.chain_result([Nodes(nodes=node_list)])
 
