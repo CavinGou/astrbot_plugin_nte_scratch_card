@@ -300,6 +300,9 @@ class NteScratchCardPlugin(Star):
         # 每日限购（从配置读取，默认 60）
         self._daily_limit = max(1, int(self.config.get("daily_limit", DAILY_LIMIT)))
 
+        # 富爪榜排除天数：超过 N 天未抽卡的用户不进榜（0 = 不过滤）
+        self._lb_inactive_days = max(0, int(self.config.get("leaderboard_inactive_days", 7)))
+
         # 刮取钱档位（从配置读取，回退到代码常量）
         self._pension_tiers = self._parse_pension_tiers(
             self.config.get("pension_tiers", []))
@@ -369,6 +372,7 @@ class NteScratchCardPlugin(Star):
                 "cycle_order": [],
                 "cycle_pos": 0,
                 "group_id": "",
+                "last_scratch_date": "",
             }
 
     # ----------------------------------------------------------
@@ -439,6 +443,7 @@ class NteScratchCardPlugin(Star):
         # 检查每日限购
         stats = self._user_stats[uid]
         today = date.today().isoformat()
+        stats["last_scratch_date"] = today  # 记录最后抽卡日期（用于富爪榜过滤）
         if stats.get("daily_date") != today:
             stats["daily_date"] = today
             stats["daily_bought"] = 0
@@ -705,12 +710,26 @@ class NteScratchCardPlugin(Star):
                 if stats.get("group_id") == current_group:
                     group_uids.add(uid)
 
+        # 过滤：超过 N 天未抽卡的用户不进榜（N=0 不过滤）
+        def _is_active(uid: str, stats: dict) -> bool:
+            if self._lb_inactive_days <= 0:
+                return True
+            last = stats.get("last_scratch_date", "")
+            if not last:
+                return True  # 无记录视为活跃，避免误伤老用户
+            try:
+                days = (date.today() - date.fromisoformat(last)).days
+            except ValueError:
+                return True
+            return days <= self._lb_inactive_days
+
         # 筛选当前群买过卡的用户（跨群统一 — 按当前群成员列表而非刮卡时的群）
         items = [
             (uid, stats.get("total_won", 0) - stats.get("total_spent", 0))
             for uid, stats in self._user_stats.items()
             if stats.get("cards_bought", 0) > 0
             and uid in group_uids
+            and _is_active(uid, stats)
         ]
         if not items:
             yield event.plain_result("📭 暂无数据，快来 /刮刮乐 吧！")

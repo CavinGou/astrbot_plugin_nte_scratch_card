@@ -38,17 +38,24 @@
     "default": 60,
     "obvious_hint": true
   },
+  "leaderboard_inactive_days": {
+    "type": "int",
+    "description": "富爪榜排除N天以上没抽过卡的用户",
+    "hint": "超过该天数未抽卡的用户不会出现在富爪榜，0 表示不过滤，默认 7 天",
+    "default": 7,
+    "obvious_hint": true
+  },
   "napcat_host": {
     "type": "string",
     "description": "NapCat连接地址",
-    "hint": "‼️ 格式：IP:端口，多个地址用逗号分隔，例如 127.0.0.1:3000,127.0.0.1:3001",
+    "hint": "格式：IP:端口，多个地址用逗号分隔，例如 127.0.0.1:3000,127.0.0.1:3001",
     "default": "127.0.0.1:3000",
     "obvious_hint": true
   },
   "napcat_token": {
     "type": "string",
     "description": "NapCat连接Token",
-    "hint": "‼️ 在此填写Napcat API Token",
+    "hint": "在此填写Napcat API Token",
     "default": "",
     "obvious_hint": true
   }
