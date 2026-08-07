@@ -6,6 +6,7 @@ category: 娱乐
 version: v1.1.0
 author: CavinGou
 repo: https://github.com/CavinGou/astrbot_plugin_nte_scratch_card
+logo: logo.png
 social_link: https://github.com/CavinGou
 support_platforms:
   - aiocqhttp
@@ -14,3 +15,8 @@ tags:
   - 异环
   - 刮刮乐
   - 排行榜
+i18n:
+  en:
+    display_name: NTE Scratch Card
+    short_desc: Recreate NTE's scratch card game: buy cards to win Fons, with leaderboards, transfers and admin tools.
+    desc: A recreation of the NTE scratch card minigame. Buy scratch cards to win bonus Fons, claim daily random Fons rewards, and enjoy leaderboards, transfers, and admin money/card tools. The daily purchase limit and pension tiers are configurable.

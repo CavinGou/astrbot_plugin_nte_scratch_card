@@ -550,7 +550,7 @@ class NteScratchCardPlugin(Star):
                 won_desc,
                 f"📊 本次收入: {'+' if batch_net >= 0 else '-'}{_fmt_money(abs(batch_net))} 方斯",
                 f"📊 累计收入: {'+' if net >= 0 else '-'}{_fmt_money(abs(net))} 方斯",
-                f"� 今日剩余: {remaining_now} / {total_daily} 张",
+                f"📅 今日剩余: {remaining_now} / {total_daily} 张",
                 f"💰 当前余额: {_fmt_money(self._user_balance[uid])} 方斯",
             ]
             summary_nodes = [
