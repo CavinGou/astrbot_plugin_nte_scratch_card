@@ -750,7 +750,7 @@ class NteScratchCardPlugin(Star):
             raw = name_map.get(uid, "")
             if not raw:
                 return uid[-4:]
-            return (raw[:9] + "…") if len(raw) > 10 else raw
+            return raw  # 不限制长度，由模板渲染时自动省略
 
         # 用 HTML 模板渲染排行榜图片
         try:
@@ -850,7 +850,7 @@ class NteScratchCardPlugin(Star):
             raw = name_map.get(uid, "")
             if not raw:
                 return uid[-4:]
-            return (raw[:9] + "…") if len(raw) > 10 else raw
+            return raw  # 不限制长度，由模板渲染时自动省略
 
         # 用 HTML 模板渲染排行榜图片
         try:
