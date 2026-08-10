@@ -44,14 +44,14 @@
 | `scratch_ntc_card` | 「帮我刮 5 张卡」「来一张刮刮乐」 | 所有用户 |
 | `daily_pension` | 「领一下今天的方斯福利」 | 所有用户 |
 | `check_scratch_balance` | 「我还有多少方斯」「看下我的战绩」 | 所有用户 |
-| `request_give_money` / `request_give_cards` | 「给我申请 10 万方斯 / 5 张额度」 | 所有用户（只能申请给自己） |
-| `admin_give_money` / `admin_give_cards` | 「给张三发 10 万方斯」「给我发 5 张卡」 | 仅 AstrBot 管理员 |
+| `give_money` | 「给我申请 10 万方斯」「给张三发 10 万方斯」 | 管理员直接发放；普通用户自动转为申请 |
+| `give_cards` | 「给我申请 5 张额度」「给我发 5 张卡」 | 管理员直接发放；普通用户自动转为申请 |
 | `admin_approve_request` / `admin_reject_request` | 引用申请消息回复「同意 / 批准 / 拒绝」 | 仅 AstrBot 管理员 |
 | `list_pending_requests` | 「查看待审批」 | 仅 AstrBot 管理员 |
 
 > 💡 说明：
 > - 管理员为 AstrBot 后台「配置 → 通用设置 → 管理员（`admins_id`）」中配置的用户。
-> - 申请-审批流程中，普通成员只能提交申请，实际发放由管理员批准后执行，降低 prompt 注入滥用风险。
+> - `give_money` / `give_cards` 会根据说话者身份自动分流：管理员直接发放；普通用户只能提交申请（目标强制为自己），实际发放由管理员批准后执行，降低 prompt 注入滥用风险。
 > - 可通过 `enable_llm_tools` 配置项一键关闭 LLM 自然语言指令，关闭后仅保留精确指令。
 
 ## 卡片说明
