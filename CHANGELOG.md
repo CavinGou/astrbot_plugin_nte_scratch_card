@@ -5,6 +5,23 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [v1.2.0] - 2026-08-10
+
+### 新增
+
+- 接入 LLM 自然语言指令（`@filter.llm_tool`），支持大模型根据用户意图自动触发：
+  - 刮卡（`scratch_ntc_card`）、每日福利（`daily_pension`）、查余额（`check_scratch_balance`）；
+  - 管理员直发方斯/购卡额度（`admin_give_money` / `admin_give_cards`），目标支持群昵称、QQ 号或「我/自己」自称；
+  - 成员申请发钱/发卡（`request_give_money` / `request_give_cards`），只能申请给自己，需管理员批准后生效；
+  - 管理员审批（`admin_approve_request` / `admin_reject_request`），支持直接引用机器人发的申请消息回复「同意/批准/拒绝」即可处理，也可带编号或唯一待审批时直接回复；
+  - 查看待审批清单（`list_pending_requests`）。
+- 新增 `enable_llm_tools` 总开关（默认开启）：关闭后大模型将无法触发任何 LLM 工具，精确指令（`刮刮乐`、`刮余额` 等）不受影响。
+
+### 变更
+
+- 管理员判定统一使用 AstrBot 后台配置的 `admins_id`（`event.is_admin()`），不再单独维护群内管理员判断。
+- 成员申请记录持久化到 `pending_requests.json`，重启不丢失。
+
 ## [v1.1.0] - 2026-08-08
 
 ### 新增

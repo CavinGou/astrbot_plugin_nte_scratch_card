@@ -10,7 +10,7 @@
 | 插件名称 | `astrbot_plugin_nte_scratch_card` |
 | 展示名 | 异环刮刮乐 |
 | 作者 | [CavinGou](https://github.com/CavinGou) |
-| 版本 | v1.1.0 |
+| 版本 | v1.2.0 |
 | 仓库 | [CavinGou/astrbot_plugin_nte_scratch_card](https://github.com/CavinGou/astrbot_plugin_nte_scratch_card) |
 | 支持平台 | 仅 OneBot v11（`aiocqhttp`） |
 | AstrBot 版本 | `>= 4.17.0` |
@@ -34,6 +34,25 @@
 |------|------|
 | `刮发钱 @用户 金额` | 给指定用户增加方斯余额 |
 | `刮发卡 [数量] @用户` | 给指定用户增加今日额外购卡额度 |
+
+### LLM 自然语言指令
+
+接入 AstrBot 的函数调用（`@filter.llm_tool`）后，大模型可根据用户意图自动触发刮卡、查余额、申请与审批等操作，无需输入精确指令：
+
+| 工具 | 触发示例 | 权限 |
+|------|----------|------|
+| `scratch_ntc_card` | 「帮我刮 5 张卡」「来一张刮刮乐」 | 所有用户 |
+| `daily_pension` | 「领一下今天的方斯福利」 | 所有用户 |
+| `check_scratch_balance` | 「我还有多少方斯」「看下我的战绩」 | 所有用户 |
+| `request_give_money` / `request_give_cards` | 「给我申请 10 万方斯 / 5 张额度」 | 所有用户（只能申请给自己） |
+| `admin_give_money` / `admin_give_cards` | 「给张三发 10 万方斯」「给我发 5 张卡」 | 仅 AstrBot 管理员 |
+| `admin_approve_request` / `admin_reject_request` | 引用申请消息回复「同意 / 批准 / 拒绝」 | 仅 AstrBot 管理员 |
+| `list_pending_requests` | 「查看待审批」 | 仅 AstrBot 管理员 |
+
+> 💡 说明：
+> - 管理员为 AstrBot 后台「配置 → 通用设置 → 管理员（`admins_id`）」中配置的用户。
+> - 申请-审批流程中，普通成员只能提交申请，实际发放由管理员批准后执行，降低 prompt 注入滥用风险。
+> - 可通过 `enable_llm_tools` 配置项一键关闭 LLM 自然语言指令，关闭后仅保留精确指令。
 
 ## 卡片说明
 
@@ -66,6 +85,7 @@
 |--------|------|--------|------|
 | `pension_tiers` | 列表 | 30/50/70/100 万方斯 | 刮取钱档位，可自定义金额与领取文案 |
 | `daily_limit` | 整数 | 60 | 每人每日限购张数 |
+| `enable_llm_tools` | 布尔 | true | 启用 LLM 自然语言指令，关闭后大模型无法触发刮卡/发钱/申请等操作 |
 | `leaderboard_inactive_days` | 整数 | 7 | 富爪榜排除 N 天以上没抽过卡的用户，0 表示不过滤 |
 | `napcat_host` | 字符串 | `127.0.0.1:3000` | NapCat 连接地址，多个地址用逗号分隔 |
 | `napcat_token` | 字符串 | 空 | NapCat API Token |
@@ -104,6 +124,7 @@ git clone https://github.com/CavinGou/astrbot_plugin_nte_scratch_card.git
 插件数据保存在 AstrBot 数据目录下的 `plugin_data/nte_scratch_card/`（通常为 `data/plugin_data/nte_scratch_card/`）：
 - `balance.json` — 用户余额数据
 - `stats.json` — 用户游戏统计数据
+- `pending_requests.json` — 成员申请-管理员审批的待审批记录（LLM 自然语言指令使用）
 
 插件配置保存在 AstrBot 的配置系统中，可通过后台可视化界面随时修改。
 
