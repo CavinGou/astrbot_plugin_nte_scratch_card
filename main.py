@@ -88,10 +88,8 @@ LLM_TOOL_NAMES = [
     "scratch_ntc_card",
     "daily_pension",
     "check_scratch_balance",
-    "admin_give_money",
-    "admin_give_cards",
-    "request_give_money",
-    "request_give_cards",
+    "give_money",
+    "give_cards",
     "admin_approve_request",
     "admin_reject_request",
     "list_pending_requests",
@@ -1317,56 +1315,33 @@ class NteScratchCardPlugin(Star):
         """帮用户查看刮刮乐余额、累计盈亏与今日剩余购卡次数。"""
         yield event.plain_result(await self._do_check_balance(event))
 
-    @filter.llm_tool(name="admin_give_money")
-    async def admin_give_money(self, event: AstrMessageEvent, target: str, amount: int):
-        """管理员给指定用户发放方斯余额，仅管理员可用。管理员说「给我/我自己」即表示发给自己。
+    @filter.llm_tool(name="give_money")
+    async def llm_give_money(self, event: AstrMessageEvent, target: str, amount: int):
+        """给用户发放方斯余额。若说话者是管理员则直接发放；否则自动转为申请并通知管理员批准。管理员说「给我/我自己」即表示发给自己；普通用户申请只能给自己。
 
         Args:
-            target(string): 目标用户的群昵称或 QQ 号，如"张三"或"123456"；「我」「自己」「本人」表示管理员本人
-            amount(number): 要发放的方斯金额，必须是正整数
+            target(string): 目标用户的群昵称或 QQ 号，如"张三"或"123456"；「我」「自己」「本人」表示本人
+            amount(number): 要发放/申请的方斯金额，必须是正整数
         """
-        if not self._is_admin(event):
-            yield event.plain_result("❌ 仅管理员可使用此指令")
+        if self._is_admin(event):
+            target_uid, target_name = await self._resolve_target(event, target)
+            if not target_uid:
+                yield event.plain_result(f"❌ 找不到用户「{target}」，请确认群昵称或 QQ 号")
+                return
+            if amount <= 0:
+                yield event.plain_result("❌ 请输入有效金额")
+                return
+            self._ensure_user(target_uid)
+            yield event.plain_result(
+                await self._do_give_money(target_uid, target_name, amount)
+            )
             return
-        target_uid, target_name = await self._resolve_target(event, target)
-        if not target_uid:
-            yield event.plain_result(f"❌ 找不到用户「{target}」，请确认群昵称或 QQ 号")
-            return
-        if amount <= 0:
-            yield event.plain_result("❌ 请输入有效金额")
-            return
-        self._ensure_user(target_uid)
-        yield event.plain_result(
-            await self._do_give_money(target_uid, target_name, amount)
-        )
+        # 非管理员：转为申请流程（只能申请给自己）
+        async for r in self._do_request_money(event, amount):
+            yield r
 
-    @filter.llm_tool(name="admin_give_cards")
-    async def admin_give_cards(self, event: AstrMessageEvent, target: str, extra: int = 1):
-        """管理员给指定用户增加今日额外购卡额度，仅管理员可用。管理员说「给我/我自己」即表示发给自己。
-
-        Args:
-            target(string): 目标用户的群昵称或 QQ 号，如"张三"或"123456"；「我」「自己」「本人」表示管理员本人
-            extra(number): 额外增加的购卡张数，默认 1
-        """
-        if not self._is_admin(event):
-            yield event.plain_result("❌ 仅管理员可使用此指令")
-            return
-        target_uid, target_name = await self._resolve_target(event, target)
-        if not target_uid:
-            yield event.plain_result(f"❌ 找不到用户「{target}」，请确认群昵称或 QQ 号")
-            return
-        self._ensure_user(target_uid)
-        yield event.plain_result(
-            await self._do_give_cards(target_uid, target_name, max(1, int(extra)))
-        )
-
-    @filter.llm_tool(name="request_give_money")
-    async def request_give_money(self, event: AstrMessageEvent, amount: int):
-        """向管理员申请发放方斯到自己的账户，需管理员批准后才到账。只能申请给自己。
-
-        Args:
-            amount(number): 想申请的方斯金额，正整数
-        """
+    async def _do_request_money(self, event: AstrMessageEvent, amount: int):
+        """成员申请发放方斯到自己账户（需管理员批准）。"""
         uid = event.get_sender_id()
         self._ensure_user(uid)
         if amount <= 0:
@@ -1389,13 +1364,30 @@ class NteScratchCardPlugin(Star):
             f"⏳ 等待管理员批准后到账"
         )
 
-    @filter.llm_tool(name="request_give_cards")
-    async def request_give_cards(self, event: AstrMessageEvent, extra: int = 1):
-        """向管理员申请增加今日购卡额度到自己的账户，需管理员批准后生效。只能申请给自己。
+    @filter.llm_tool(name="give_cards")
+    async def llm_give_cards(self, event: AstrMessageEvent, target: str, extra: int = 1):
+        """给用户增加今日购卡额度。若说话者是管理员则直接发放；否则自动转为申请并通知管理员批准。管理员说「给我/我自己」即表示发给自己；普通用户申请只能给自己。
 
         Args:
-            extra(number): 想申请的额外购卡张数，默认 1
+            target(string): 目标用户的群昵称或 QQ 号，如"张三"或"123456"；「我」「自己」「本人」表示本人
+            extra(number): 额外增加的购卡张数，默认 1
         """
+        if self._is_admin(event):
+            target_uid, target_name = await self._resolve_target(event, target)
+            if not target_uid:
+                yield event.plain_result(f"❌ 找不到用户「{target}」，请确认群昵称或 QQ 号")
+                return
+            self._ensure_user(target_uid)
+            yield event.plain_result(
+                await self._do_give_cards(target_uid, target_name, max(1, int(extra)))
+            )
+            return
+        # 非管理员：转为申请流程（只能申请给自己）
+        async for r in self._do_request_cards(event, extra):
+            yield r
+
+    async def _do_request_cards(self, event: AstrMessageEvent, extra: int):
+        """成员申请购卡额度到自己账户（需管理员批准）。"""
         uid = event.get_sender_id()
         self._ensure_user(uid)
         extra = max(1, int(extra))
