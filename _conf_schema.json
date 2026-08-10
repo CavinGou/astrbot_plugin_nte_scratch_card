@@ -3,7 +3,6 @@
     "type": "template_list",
     "description": "刮取钱档位列表",
     "hint": "档位顺序随机，一轮发完自动重洗。",
-    "obvious_hint": true,
     "default": [
       {"__template_key": "pension", "amount": 300000, "desc": "管理局给娜娜莉的医疗补贴下来了，手头宽裕了些"},
       {"__template_key": "pension", "amount": 500000, "desc": "雨燕出行跑了一天单，腰都要断了，赚点辛苦钱。"},
@@ -35,15 +34,19 @@
     "type": "int",
     "description": "每人每日限购张数",
     "hint": "默认 60 张",
-    "default": 60,
-    "obvious_hint": true
+    "default": 60
+  },
+  "enable_llm_tools": {
+    "type": "bool",
+    "description": "启用 LLM 自然语言指令",
+    "hint": "关闭后大模型将无法触发刮卡/发钱/申请等操作",
+    "default": true
   },
   "leaderboard_inactive_days": {
     "type": "int",
     "description": "富爪榜排除N天以上没抽过卡的用户",
     "hint": "超过该天数未抽卡的用户不会出现在富爪榜，0 表示不过滤，默认 7 天",
-    "default": 7,
-    "obvious_hint": true
+    "default": 7
   },
   "napcat_host": {
     "type": "string",

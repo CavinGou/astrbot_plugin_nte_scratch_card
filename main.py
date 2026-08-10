@@ -4,9 +4,10 @@ NTE 刮刮乐 - AstrBot 插件
 """
 
 import base64
-from datetime import date
+from datetime import date, datetime
 import json
 import random
+import re
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -17,6 +18,7 @@ from astrbot.api.star import Context, Star, register
 from astrbot.api import logger
 from astrbot.api.message_components import Node, Nodes, Plain, At
 from astrbot.core.utils.astrbot_path import get_astrbot_data_path
+from astrbot.core.utils.quoted_message_parser import extract_quoted_message_text
 
 
 # ============================================================
@@ -79,6 +81,20 @@ PENSION_TIERS = [
     (500000,  "雨燕出行跑了一天单，腰都要断了，赚点辛苦钱。"),
     (700000,  "背着店长偷偷把伊波恩抵押了…发了笔小财！"),
     (1000000, "赶上粉爪大劫案，浑水摸鱼捞了一笔，赶紧跑路！"),
+]
+
+# 注册的全部 LLM 工具名（用于开关统一激活/停用）
+LLM_TOOL_NAMES = [
+    "scratch_ntc_card",
+    "daily_pension",
+    "check_scratch_balance",
+    "admin_give_money",
+    "admin_give_cards",
+    "request_give_money",
+    "request_give_cards",
+    "admin_approve_request",
+    "admin_reject_request",
+    "list_pending_requests",
 ]
 
 
@@ -307,6 +323,23 @@ class NteScratchCardPlugin(Star):
         self._pension_tiers = self._parse_pension_tiers(
             self.config.get("pension_tiers", []))
 
+        # LLM 工具总开关（默认开启）；关闭时统一停用所有注册的 LLM 工具，
+        # 模型将看不到这些工具、不会通过自然语言触发
+        self._enable_llm = bool(self.config.get("enable_llm_tools", True))
+        try:
+            for name in LLM_TOOL_NAMES:
+                if self._enable_llm:
+                    self.context.activate_llm_tool(name)
+                else:
+                    self.context.deactivate_llm_tool(name)
+        except Exception as e:
+            logger.warning(f"LLM 工具开关应用失败: {e}")
+
+        # 待审批申请（成员申请 -> 管理员审批）
+        self._pending_path = self.data_dir / "pending_requests.json"
+        self._pending_requests: List[dict] = []
+        self._req_seq = 0
+
         # uid -> 余额
         self._user_balance: Dict[str, int] = {}
         # uid -> {total_spent, total_won, cards_bought, cards_won}
@@ -326,6 +359,21 @@ class NteScratchCardPlugin(Star):
                 except Exception as e:
                     logger.error(f"加载 {path.name} 失败: {e}")
                     setattr(self, attr, {})
+
+        # 加载待审批申请
+        if self._pending_path.exists():
+            try:
+                self._pending_requests = json.loads(
+                    self._pending_path.read_text("utf-8"))
+                for r in self._pending_requests:
+                    try:
+                        n = int(str(r.get("id", "REQ-0")).split("-")[-1])
+                        self._req_seq = max(self._req_seq, n)
+                    except Exception:
+                        pass
+            except Exception as e:
+                logger.error(f"加载 {self._pending_path.name} 失败: {e}")
+                self._pending_requests = []
 
     def _save_balance(self):
         self._balance_path.write_text(
@@ -352,6 +400,10 @@ class NteScratchCardPlugin(Star):
     def _save_stats(self):
         self._stats_path.write_text(
             json.dumps(self._user_stats, ensure_ascii=False), "utf-8")
+
+    def _save_pending(self):
+        self._pending_path.write_text(
+            json.dumps(self._pending_requests, ensure_ascii=False), "utf-8")
 
     def _ensure_user(self, uid: str):
         if uid not in self._user_balance:
@@ -418,17 +470,6 @@ class NteScratchCardPlugin(Star):
     @filter.command("刮刮乐")
     async def scratch(self, event: AstrMessageEvent):
         """购买刮刮卡并立即刮开，支持一次多张：/刮刮乐 10"""
-        uid = event.get_sender_id()
-        self._ensure_user(uid)
-
-        # 记录用户所在群号
-        try:
-            gid = str(event.message_obj.group_id)
-            if gid:
-                self._user_stats[uid]["group_id"] = gid
-        except Exception:
-            pass
-
         # 解析数量
         args = event.message_str.strip().split()
         count = 1
@@ -439,6 +480,24 @@ class NteScratchCardPlugin(Star):
                     count = 1
             except ValueError:
                 pass
+        async for r in self._do_scratch(event, count):
+            if isinstance(r, str):
+                yield event.plain_result(r)
+            else:
+                yield event.chain_result(r)
+
+    async def _do_scratch(self, event: AstrMessageEvent, count: int = 1):
+        """购买并刮开 count 张刮刮卡，生成结果：单张为 str，多张为合并转发节点列表。"""
+        uid = event.get_sender_id()
+        self._ensure_user(uid)
+
+        # 记录用户所在群号
+        try:
+            gid = str(event.message_obj.group_id)
+            if gid:
+                self._user_stats[uid]["group_id"] = gid
+        except Exception:
+            pass
 
         # 检查每日限购
         stats = self._user_stats[uid]
@@ -455,15 +514,13 @@ class NteScratchCardPlugin(Star):
         total_daily = self._daily_limit + stats.get("daily_extra", 0)
         remaining_daily = total_daily - stats["daily_bought"]
         if count > remaining_daily:
-            yield event.plain_result(
-                f"❌ 今日剩余 {remaining_daily} 张，不够买 {count} 张！"
-            )
+            yield f"❌ 今日剩余 {remaining_daily} 张，不够买 {count} 张！"
             return
 
         # 检查余额
         total_cost = CARD_COST * count
         if self._user_balance[uid] < total_cost:
-            yield event.plain_result(
+            yield (
                 f"❌ 余额不足！需要 {_fmt_money(total_cost)} 方斯，"
                 f"当前只有 {_fmt_money(self._user_balance[uid])} 方斯"
             )
@@ -506,7 +563,7 @@ class NteScratchCardPlugin(Star):
                 f"💰 余额: {_fmt_money(self._user_balance[uid])} 方斯  |  📊 {'+' if net >= 0 else '-'}{_fmt_money(abs(net))}",
                 f"📅 今日剩余: {remaining_now} / {total_daily} 张",
             ]
-            yield event.plain_result("\n".join(lines))
+            yield "\n".join(lines)
         else:
             # 多张：用合并转发
             bot_uin = event.get_self_id()
@@ -560,7 +617,7 @@ class NteScratchCardPlugin(Star):
             # 汇总各项在前，后面再分各张
             node_list = summary_nodes + node_list
 
-            yield event.chain_result([Nodes(nodes=node_list)])
+            yield [Nodes(nodes=node_list)]
 
     # ----------------------------------------------------------
     # 指令: /刮刮乐帮助  - 显示帮助
@@ -579,7 +636,7 @@ class NteScratchCardPlugin(Star):
             f"刮刮乐帮助      显示此帮助",
         ]
         # 管理员专属指令
-        if event.role == "admin":
+        if event.is_admin():
             lines += [
                 "━━━ 管理员指令 ━━━",
                 f"刮发钱 @用户 金额    给指定用户增加方斯余额",
@@ -598,16 +655,17 @@ class NteScratchCardPlugin(Star):
     @filter.command("刮取钱")
     async def pension(self, event: AstrMessageEvent):
         """每日阶段性领取方斯（周期内顺序随机）"""
+        yield event.plain_result(await self._do_pension(event))
+
+    async def _do_pension(self, event: AstrMessageEvent) -> str:
+        """领取每日方斯福利，返回结果文本。"""
         uid = event.get_sender_id()
         self._ensure_user(uid)
         stats = self._user_stats[uid]
 
         today = date.today().isoformat()
         if stats.get("pension_date") == today:
-            yield event.plain_result(
-                f"❌ 今天已经领过了，明天再来吧 😊"
-            )
-            return
+            return "❌ 今天已经领过了，明天再来吧 😊"
 
         # 初始化或重新洗牌
         cycle_order = stats.get("cycle_order", [])
@@ -631,7 +689,7 @@ class NteScratchCardPlugin(Star):
         self._save_balance()
         self._save_stats()
 
-        yield event.plain_result(
+        return (
             f"💝 {msg}\n"
             f"获得 {_fmt_money(amount)} 方斯！\n"
             f"💰 当前余额: {_fmt_money(self._user_balance[uid])} 方斯"
@@ -643,6 +701,10 @@ class NteScratchCardPlugin(Star):
     @filter.command("刮余额")
     async def check_balance(self, event: AstrMessageEvent):
         """查看余额和游戏统计"""
+        yield event.plain_result(await self._do_check_balance(event))
+
+    async def _do_check_balance(self, event: AstrMessageEvent) -> str:
+        """查看余额和游戏统计，返回结果文本。"""
         uid = event.get_sender_id()
         self._ensure_user(uid)
 
@@ -679,7 +741,7 @@ class NteScratchCardPlugin(Star):
             f"💵 总投入: {_fmt_money(stats['total_spent'])} 方斯",
             f"💵 总奖金: {_fmt_money(stats['total_won'])} 方斯",
         ]
-        yield event.plain_result("\n".join(lines))
+        return "\n".join(lines)
 
     # ----------------------------------------------------------
     # 指令: /刮卡排行  - 排行榜
@@ -897,7 +959,7 @@ class NteScratchCardPlugin(Star):
     @filter.command("刮发钱")
     async def give_money(self, event: AstrMessageEvent):
         """管理员给指定用户加方斯"""
-        if event.role != "admin":
+        if not self._is_admin(event):
             yield event.plain_result("❌ 仅管理员可使用此指令")
             return
         uid = event.get_sender_id()
@@ -929,23 +991,16 @@ class NteScratchCardPlugin(Star):
             return
 
         self._ensure_user(target_uid)
+        target_name = await self._get_target_name(event, target_uid)
+        yield event.plain_result(
+            await self._do_give_money(target_uid, target_name, amount)
+        )
+
+    async def _do_give_money(self, target_uid: str, target_name: str, amount: int) -> str:
+        """给指定用户发方斯余额，返回结果文本。"""
         self._user_balance[target_uid] += amount
         self._save_balance()
-
-        # 通过 NapCat API 获取目标用户群名片
-        target_name = target_uid[-4:]
-        try:
-            gid = str(event.message_obj.group_id)
-            if gid:
-                member_data, _ = await self._get_member_info(gid, target_uid)
-                if member_data:
-                    name = member_data.get("card") or member_data.get("nickname", "")
-                    if name:
-                        target_name = (name[:9] + "…") if len(name) > 10 else name
-        except Exception:
-            pass
-
-        yield event.plain_result(
+        return (
             f"💸 发钱成功！\n"
             f"{target_name} 获得 {_fmt_money(amount)} 方斯\n"
             f"当前余额: {_fmt_money(self._user_balance[target_uid])} 方斯"
@@ -957,7 +1012,7 @@ class NteScratchCardPlugin(Star):
     @filter.command("刮发卡")
     async def give_extra_cards(self, event: AstrMessageEvent):
         """管理员给指定用户增加今日可购买的卡次数"""
-        if event.role != "admin":
+        if not self._is_admin(event):
             yield event.plain_result("❌ 仅管理员可使用此指令")
             return
 
@@ -986,6 +1041,13 @@ class NteScratchCardPlugin(Star):
             extra = 1
 
         self._ensure_user(target_uid)
+        target_name = await self._get_target_name(event, target_uid)
+        yield event.plain_result(
+            await self._do_give_cards(target_uid, target_name, extra)
+        )
+
+    async def _do_give_cards(self, target_uid: str, target_name: str, extra: int) -> str:
+        """给指定用户增加今日可购卡额度，返回结果文本。"""
         stats = self._user_stats[target_uid]
 
         # 如果是新的一天，先重置
@@ -1002,23 +1064,10 @@ class NteScratchCardPlugin(Star):
         stats["daily_extra"] = stats.get("daily_extra", 0) + extra
         self._save_stats()
 
-        # 获取昵称
-        target_name = target_uid[-4:]
-        try:
-            gid = str(event.message_obj.group_id)
-            if gid:
-                member_data, _ = await self._get_member_info(gid, target_uid)
-                if member_data:
-                    name = member_data.get("card") or member_data.get("nickname", "")
-                    if name:
-                        target_name = (name[:9] + "…") if len(name) > 10 else name
-        except Exception:
-            pass
-
         total_daily = self._daily_limit + stats["daily_extra"]
         remaining = total_daily - stats["daily_bought"]
 
-        yield event.plain_result(
+        return (
             f"🎴 发卡成功！\n"
             f"{target_name} 获得 +{extra} 张额外额度\n"
             f"📅 今日可购: {remaining} / {total_daily} 张"
@@ -1092,6 +1141,334 @@ class NteScratchCardPlugin(Star):
             f"转出 {_fmt_money(amount)} 方斯 → {target_name}\n"
             f"💰 当前余额: {_fmt_money(self._user_balance[uid])} 方斯"
         )
+
+    # ----------------------------------------------------------
+    # LLM 工具（自然语言触发）：由 AstrBot Agent 根据用户意图自动调用
+    # 需在 AstrBot 中配置支持 function-calling 的 LLM Provider
+    # 管理员工具（发钱/发卡/审批）内部带 admin 权限校验；目标用户由
+    # 大模型传昵称/QQ 号，工具内匹配群成员，降低 prompt 注入滥用风险
+    # ----------------------------------------------------------
+    def _is_admin(self, event: AstrMessageEvent) -> bool:
+        """判断当前发送者是否为 AstrBot 管理员（event.is_admin()，其 role 由 AstrBot 后台 admins_id 填充）。"""
+        return event.is_admin()
+
+    async def _get_admins(self, event: AstrMessageEvent) -> List[str]:
+        """获取可被 @ 到的管理员 uid 列表：直接使用 AstrBot 配置的 admins_id。"""
+        try:
+            cfg = self.context.get_config(umo=event.unified_msg_origin)
+            admins = [str(a) for a in cfg.get("admins_id", []) if str(a).strip()]
+            # 过滤掉 AstrBot 默认占位符 "astrbot"（未真正配置管理员时）
+            admins = [a for a in admins if a.lower() != "astrbot"]
+            return admins
+        except Exception:
+            pass
+        return []
+
+    def _find_pending(self, request_id: str) -> Optional[dict]:
+        """按编号查找待审批申请。"""
+        rid = str(request_id or "").strip().upper()
+        for r in self._pending_requests:
+            if str(r.get("id", "")).upper() == rid:
+                return r
+        return None
+
+    async def _resolve_request(self, event: AstrMessageEvent, request_id: str) -> Optional[dict]:
+        """解析审批目标申请：优先按编号，其次按引用消息中的编号，再次唯一待审批。"""
+        if request_id and request_id.strip():
+            return self._find_pending(request_id)
+        try:
+            quoted = await extract_quoted_message_text(event)
+            if quoted:
+                m = re.search(r"REQ-\d+", quoted)
+                if m:
+                    req = self._find_pending(m.group(0))
+                    if req:
+                        return req
+        except Exception:
+            pass
+        pending = [r for r in self._pending_requests if r.get("status") == "pending"]
+        if len(pending) == 1:
+            return pending[0]
+        return None
+
+    def _pending_list_text(self, max_show: int = 10) -> str:
+        """生成待审批清单文本。"""
+        pending = [r for r in self._pending_requests if r.get("status") == "pending"]
+        if not pending:
+            return "📭 当前没有待审批的申请"
+        lines = [f"📋 待审批申请（共 {len(pending)} 条）："]
+        for r in pending[:max_show]:
+            if r["type"] == "money":
+                detail = f"{_fmt_money(r.get('amount', 0))} 方斯"
+            else:
+                detail = f"+{r.get('extra', 1)} 张额度"
+            lines.append(
+                f"• {r['id']} {r.get('nickname', r['uid'])} 申请 {detail}"
+                f"（{r.get('created_at', '')}）")
+        if len(pending) > max_show:
+            lines.append(f"… 还有 {len(pending) - max_show} 条")
+        lines.append("回复「批准 <编号>」或「拒绝 <编号>」处理")
+        return "\n".join(lines)
+
+    async def _create_request(self, event: AstrMessageEvent, req_type: str,
+                              amount: int = 0, extra: int = 0) -> dict:
+        """创建一条待审批申请并持久化，返回请求字典。"""
+        self._req_seq += 1
+        req_id = f"REQ-{self._req_seq:06d}"
+        uid = event.get_sender_id()
+        req = {
+            "id": req_id,
+            "uid": uid,
+            "nickname": uid[-4:],
+            "type": req_type,
+            "amount": amount,
+            "extra": extra,
+            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "status": "pending",
+            "approved_by": "",
+            "approved_at": "",
+            "group_id": "",
+        }
+        try:
+            req["group_id"] = str(event.message_obj.group_id)
+        except Exception:
+            pass
+        req["nickname"] = await self._get_target_name(event, uid)
+        self._pending_requests.append(req)
+        self._save_pending()
+        return req
+
+    async def _notify_admins(self, event: AstrMessageEvent, text: str) -> Optional[list]:
+        """返回要在当前会话 @ 本群管理员的通知消息组件；找不到管理员返回 None。"""
+        admins = await self._get_admins(event)
+        if not admins:
+            return None
+        nodes: List = []
+        for a in admins:
+            nodes.append(At(qq=a))
+        nodes.append(Plain(text=f"\n{text}"))
+        return nodes
+
+    async def _get_target_name(self, event: AstrMessageEvent, target_uid: str) -> str:
+        """通过 NapCat API 获取目标用户群名片（失败回退为 uid 后四位）"""
+        target_name = target_uid[-4:]
+        try:
+            gid = str(event.message_obj.group_id)
+            if gid:
+                member_data, _ = await self._get_member_info(gid, target_uid)
+                if member_data:
+                    name = member_data.get("card") or member_data.get("nickname", "")
+                    if name:
+                        target_name = (name[:9] + "…") if len(name) > 10 else name
+        except Exception:
+            pass
+        return target_name
+
+    async def _resolve_target(self, event: AstrMessageEvent, target: str) -> Tuple[Optional[str], str]:
+        """解析目标用户：优先取 @ 组件，其次自称（我/自己），否则按群昵称/QQ 号匹配群成员。
+        返回 (uid, 展示名)；找不到返回 (None, "")。"""
+        # 1. 优先取 @
+        for comp in event.get_messages():
+            if isinstance(comp, At):
+                uid = str(comp.qq)
+                return uid, uid[-4:]
+        # 1.5 自称：target 为「我/自己/本人/me/self」时返回发送者
+        me = str(target or "").strip().lower()
+        if me in ("我", "自己", "本人", "me", "self"):
+            uid = event.get_sender_id()
+            return uid, await self._get_target_name(event, uid)
+        # 2. 按昵称/QQ 号匹配群成员
+        try:
+            gid = str(event.message_obj.group_id)
+            if gid:
+                members, _ = await self._get_group_members(gid)
+                if members:
+                    target = str(target or "").strip()
+                    for m in members:
+                        name = (m.get("card") or m.get("nickname") or "").strip()
+                        uid = str(m.get("user_id", ""))
+                        if target and target in (name, uid):
+                            display = (name[:9] + "…") if len(name) > 10 else name
+                            return uid, display or uid[-4:]
+        except Exception:
+            pass
+        return None, ""
+
+    @filter.llm_tool(name="scratch_ntc_card")
+    async def scratch_ntc_card(self, event: AstrMessageEvent, count: int = 1):
+        """帮用户购买并刮开异环刮刮卡，返回中奖结果与最新余额。
+
+        Args:
+            count(number): 要刮的刮刮卡张数，最小 1，默认 1
+        """
+        async for r in self._do_scratch(event, max(1, int(count))):
+            if isinstance(r, str):
+                yield event.plain_result(r)
+            else:
+                yield event.chain_result(r)
+
+    @filter.llm_tool(name="daily_pension")
+    async def daily_pension(self, event: AstrMessageEvent):
+        """帮用户每日领取一次免费方斯福利，每天只能领一次。"""
+        yield event.plain_result(await self._do_pension(event))
+
+    @filter.llm_tool(name="check_scratch_balance")
+    async def llm_check_balance(self, event: AstrMessageEvent):
+        """帮用户查看刮刮乐余额、累计盈亏与今日剩余购卡次数。"""
+        yield event.plain_result(await self._do_check_balance(event))
+
+    @filter.llm_tool(name="admin_give_money")
+    async def admin_give_money(self, event: AstrMessageEvent, target: str, amount: int):
+        """管理员给指定用户发放方斯余额，仅管理员可用。管理员说「给我/我自己」即表示发给自己。
+
+        Args:
+            target(string): 目标用户的群昵称或 QQ 号，如"张三"或"123456"；「我」「自己」「本人」表示管理员本人
+            amount(number): 要发放的方斯金额，必须是正整数
+        """
+        if not self._is_admin(event):
+            yield event.plain_result("❌ 仅管理员可使用此指令")
+            return
+        target_uid, target_name = await self._resolve_target(event, target)
+        if not target_uid:
+            yield event.plain_result(f"❌ 找不到用户「{target}」，请确认群昵称或 QQ 号")
+            return
+        if amount <= 0:
+            yield event.plain_result("❌ 请输入有效金额")
+            return
+        self._ensure_user(target_uid)
+        yield event.plain_result(
+            await self._do_give_money(target_uid, target_name, amount)
+        )
+
+    @filter.llm_tool(name="admin_give_cards")
+    async def admin_give_cards(self, event: AstrMessageEvent, target: str, extra: int = 1):
+        """管理员给指定用户增加今日额外购卡额度，仅管理员可用。管理员说「给我/我自己」即表示发给自己。
+
+        Args:
+            target(string): 目标用户的群昵称或 QQ 号，如"张三"或"123456"；「我」「自己」「本人」表示管理员本人
+            extra(number): 额外增加的购卡张数，默认 1
+        """
+        if not self._is_admin(event):
+            yield event.plain_result("❌ 仅管理员可使用此指令")
+            return
+        target_uid, target_name = await self._resolve_target(event, target)
+        if not target_uid:
+            yield event.plain_result(f"❌ 找不到用户「{target}」，请确认群昵称或 QQ 号")
+            return
+        self._ensure_user(target_uid)
+        yield event.plain_result(
+            await self._do_give_cards(target_uid, target_name, max(1, int(extra)))
+        )
+
+    @filter.llm_tool(name="request_give_money")
+    async def request_give_money(self, event: AstrMessageEvent, amount: int):
+        """向管理员申请发放方斯到自己的账户，需管理员批准后才到账。只能申请给自己。
+
+        Args:
+            amount(number): 想申请的方斯金额，正整数
+        """
+        uid = event.get_sender_id()
+        self._ensure_user(uid)
+        if amount <= 0:
+            yield event.plain_result("❌ 请输入有效金额")
+            return
+        req = await self._create_request(event, "money", amount=amount)
+        notify = (
+            f"📨 新申请 {req['id']}\n"
+            f"{req['nickname']} 申请 {_fmt_money(amount)} 方斯\n"
+            f"回复「批准 {req['id']}」或「拒绝 {req['id']}」"
+        )
+        notify_nodes = await self._notify_admins(event, notify)
+        if notify_nodes:
+            yield event.chain_result(notify_nodes)
+        else:
+            yield event.plain_result(
+                "⚠️ 找不到可通知的管理员（请在 AstrBot 后台配置管理员），申请已记录，可由管理员在群里审批")
+        yield event.plain_result(
+            f"📨 申请已提交：{_fmt_money(amount)} 方斯（{req['id']}）\n"
+            f"⏳ 等待管理员批准后到账"
+        )
+
+    @filter.llm_tool(name="request_give_cards")
+    async def request_give_cards(self, event: AstrMessageEvent, extra: int = 1):
+        """向管理员申请增加今日购卡额度到自己的账户，需管理员批准后生效。只能申请给自己。
+
+        Args:
+            extra(number): 想申请的额外购卡张数，默认 1
+        """
+        uid = event.get_sender_id()
+        self._ensure_user(uid)
+        extra = max(1, int(extra))
+        req = await self._create_request(event, "cards", extra=extra)
+        notify = (
+            f"📨 新申请 {req['id']}\n"
+            f"{req['nickname']} 申请 +{extra} 张购卡额度\n"
+            f"回复「批准 {req['id']}」或「拒绝 {req['id']}」"
+        )
+        notify_nodes = await self._notify_admins(event, notify)
+        if notify_nodes:
+            yield event.chain_result(notify_nodes)
+        else:
+            yield event.plain_result(
+                "⚠️ 找不到可通知的管理员（请在 AstrBot 后台配置管理员），申请已记录，可由管理员在群里审批")
+        yield event.plain_result(
+            f"📨 申请已提交：+{extra} 张额度（{req['id']}）\n"
+            f"⏳ 等待管理员批准后生效"
+        )
+
+    @filter.llm_tool(name="admin_approve_request")
+    async def admin_approve_request(self, event: AstrMessageEvent, request_id: str = ""):
+        """批准一条待审批的发钱/发卡申请并立即发放，仅管理员可用。可以直接引用机器人发的申请消息后说「同意/批准」，无需填写编号。
+
+        Args:
+            request_id(string): 待审批申请编号，形如 REQ-000001。可省略：会优先从你引用的申请消息识别，或仅有一条待审批时自动匹配
+        """
+        if not self._is_admin(event):
+            yield event.plain_result("❌ 仅管理员可审批")
+            return
+        req = await self._resolve_request(event, request_id)
+        if not req:
+            yield event.plain_result(self._pending_list_text())
+            return
+        if req["type"] == "money":
+            self._ensure_user(req["uid"])
+            result = await self._do_give_money(
+                req["uid"], req["nickname"], req.get("amount", 0))
+        else:
+            self._ensure_user(req["uid"])
+            result = await self._do_give_cards(
+                req["uid"], req["nickname"], max(1, int(req.get("extra", 1))))
+        req["status"] = "approved"
+        req["approved_by"] = event.get_sender_id()
+        req["approved_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self._save_pending()
+        yield event.plain_result(f"✅ 已批准 {req['id']}\n{result}")
+
+    @filter.llm_tool(name="admin_reject_request")
+    async def admin_reject_request(self, event: AstrMessageEvent, request_id: str = ""):
+        """拒绝一条待审批的发钱/发卡申请，仅管理员可用。可以直接引用机器人发的申请消息后说「拒绝」，无需填写编号。
+
+        Args:
+            request_id(string): 待审批申请编号，形如 REQ-000001。可省略：会优先从你引用的申请消息识别，或仅有一条待审批时自动匹配
+        """
+        if not self._is_admin(event):
+            yield event.plain_result("❌ 仅管理员可审批")
+            return
+        req = await self._resolve_request(event, request_id)
+        if not req:
+            yield event.plain_result(self._pending_list_text())
+            return
+        req["status"] = "rejected"
+        self._save_pending()
+        yield event.plain_result(f"❌ 已拒绝 {req['id']}")
+
+    @filter.llm_tool(name="list_pending_requests")
+    async def list_pending_requests(self, event: AstrMessageEvent):
+        """查看当前所有待审批的发钱/发卡申请，仅管理员可用。"""
+        if not self._is_admin(event):
+            yield event.plain_result("❌ 仅管理员可查看")
+            return
+        yield event.plain_result(self._pending_list_text())
 
     # ----------------------------------------------------------
     # 插件销毁
