@@ -22,58 +22,116 @@ from astrbot.core.utils.quoted_message_parser import extract_quoted_message_text
 
 
 # ============================================================
-# 卡片配置（唯一档位：5 万方斯）
+# 卡片档位配置（2 万 / 3 万 / 5 万方斯三档）
 # ============================================================
-CARD_COST = 50000
 CARD_POSITIONS = 15
-CARD_MAX_PRIZE = 2500000
 CARD_ROWS = 3
 CARD_COLS = 5
 
-# 单格可用奖金档位
-CELL_PRIZE_TIERS = [
-    20000, 50000, 100000, 150000, 200000,
-    300000, 500000, 800000, 1000000, 1500000,
-]
+# 各档卡片配置：
+#   cost       - 售价（方斯）
+#   cell_tiers - 单格可用奖金档位
+#   prize_dist - 总奖金概率分布表（来自游戏实际数据）[(总奖金, 概率%), ...]
+CARD_TYPES = {
+    20000: {
+        "cost": 20000,
+        "daily_limit": 20,
+        "bookmark_reward": 1,
+        "positions": 15,
+        "layout": [5, 5, 5],
+        "cell_tiers": [10000, 20000, 30000, 50000, 100000, 150000,
+                       200000, 300000, 500000],
+        "prize_dist": [
+            (0, 28.4892), (10000, 54.4646), (20000, 10.8929), (30000, 5.8654), (40000, 0.1173),
+            (50000, 0.0922), (60000, 0.013), (70000, 0.0038), (80000, 0.0096), (90000, 0.008),
+            (100000, 0.0155), (110000, 0.0017), (120000, 0.0044), (130000, 0.0019), (140000, 0.0019),
+            (150000, 0.0038), (160000, 0.0021), (170000, 0.0006), (180000, 0.0013), (190000, 0.0008),
+            (200000, 0.0082), (210000, 0.0003), (220000, 0.0003), (230000, 0.0003), (240000, 0.0003),
+            (250000, 0.0002), (260000, 0.0002), (280000, 0.0001), (290000, 0.0001), (300000, 0.0001),
+            (350000, 0.00004), (400000, 0.00004), (500000, 0.00004),
+        ],
+    },
+    30000: {
+        "cost": 30000,
+        "daily_limit": 30,
+        "bookmark_reward": 3,
+        "positions": 15,
+        "layout": [5, 5, 5],
+        "cell_tiers": [10000, 20000, 30000, 50000, 100000, 150000, 200000,
+                       300000, 500000, 800000, 1000000, 1500000],
+        "prize_dist": [
+            (0, 22.7142), (20000, 25.959), (30000, 25.959), (40000, 9.7346), (50000, 6.4898),
+            (60000, 1.9469), (70000, 0.649), (80000, 1.6224), (90000, 1.6224), (100000, 1.9469),
+            (110000, 0.1298), (120000, 0.3569), (130000, 0.1622), (140000, 0.1947), (150000, 0.2596),
+            (160000, 0.013), (170000, 0.0065), (180000, 0.0211), (190000, 0.0065), (200000, 0.0227),
+            (210000, 0.0081), (220000, 0.0065), (230000, 0.0065), (240000, 0.0146), (250000, 0.0114),
+            (260000, 0.0065), (270000, 0.0081), (280000, 0.0032), (290000, 0.0032), (300000, 0.0341),
+            (320000, 0.0032), (330000, 0.0019), (340000, 0.0019), (350000, 0.0052), (360000, 0.0052),
+            (380000, 0.0019), (390000, 0.0019), (400000, 0.0091), (420000, 0.0026), (430000, 0.0006),
+            (440000, 0.0006), (450000, 0.0084), (460000, 0.0013), (470000, 0.0006), (480000, 0.0013),
+            (490000, 0.0013), (500000, 0.0078), (510000, 0.0003), (520000, 0.0003), (530000, 0.0003),
+            (540000, 0.0003), (550000, 0.001), (560000, 0.0003), (570000, 0.0002), (580000, 0.0002),
+            (590000, 0.0002), (600000, 0.0031), (620000, 0.0005), (630000, 0.0003), (640000, 0.0003),
+            (650000, 0.0013), (660000, 0.0006), (680000, 0.0003), (690000, 0.0003), (700000, 0.0015),
+            (720000, 0.0003), (750000, 0.0011), (800000, 0.0016), (820000, 0.0002), (830000, 0.0002),
+            (840000, 0.0002), (850000, 0.0003), (860000, 0.0003), (880000, 0.0002), (890000, 0.0002),
+            (900000, 0.0023), (920000, 0.0003), (930000, 0.0002), (940000, 0.0002), (950000, 0.0008),
+            (960000, 0.0003), (980000, 0.0002), (990000, 0.0002), (1000000, 0.0019), (1020000, 0.0001),
+            (1030000, 0.0001), (1040000, 0.0001), (1050000, 0.0002), (1060000, 0.0001), (1080000, 0.0001),
+            (1090000, 0.0001), (1100000, 0.0004), (1120000, 0.0001), (1150000, 0.0002), (1200000, 0.0003),
+            (1220000, 0.00003), (1230000, 0.00003), (1240000, 0.00003), (1250000, 0.0001), (1260000, 0.0001),
+            (1280000, 0.00003), (1290000, 0.00003), (1300000, 0.0004), (1320000, 0.00003), (1350000, 0.0001),
+            (1400000, 0.0002), (1450000, 0.0001), (1500000, 0.0003),
+        ],
+    },
+    50000: {
+        "cost": 50000,
+        "daily_limit": 50,
+        "bookmark_reward": 5,
+        "positions": 12,
+        "layout": [4, 4, 4],
+        "cell_tiers": [20000, 50000, 100000, 150000, 200000,
+                       300000, 500000, 800000, 1000000, 1500000],
+        "prize_dist": [
+            (0, 21.1851), (20000, 10.5926), (40000, 21.1851), (50000, 21.1851), (60000, 2.7541),
+            (70000, 2.7541), (80000, 2.7541), (90000, 2.7541), (100000, 8.2622), (110000, 0.4237),
+            (120000, 1.2711), (130000, 0.4237), (140000, 1.2711), (150000, 1.6948), (160000, 0.1907),
+            (170000, 0.1271), (180000, 0.1907), (190000, 0.1271), (200000, 0.4449), (210000, 0.0212),
+            (220000, 0.0318), (230000, 0.0212), (240000, 0.0318), (250000, 0.0741), (260000, 0.0318),
+            (280000, 0.0318), (300000, 0.1059), (320000, 0.0013), (340000, 0.0013), (350000, 0.0042),
+            (360000, 0.0013), (380000, 0.0013), (400000, 0.0055), (420000, 0.0008), (440000, 0.0008),
+            (450000, 0.0042), (460000, 0.0008), (470000, 0.0004), (480000, 0.0008), (490000, 0.0004),
+            (500000, 0.0064), (510000, 0.0002), (520000, 0.0002), (530000, 0.0002), (540000, 0.0002),
+            (550000, 0.0017), (560000, 0.0002), (580000, 0.0002), (600000, 0.0032), (620000, 0.0006),
+            (640000, 0.0006), (650000, 0.0019), (660000, 0.0006), (680000, 0.0006), (700000, 0.0034),
+            (750000, 0.0019), (800000, 0.0034), (820000, 0.0002), (840000, 0.0002), (850000, 0.0004),
+            (860000, 0.0002), (880000, 0.0002), (900000, 0.0018), (920000, 0.0001), (940000, 0.0001),
+            (950000, 0.0007), (960000, 0.0001), (980000, 0.0001), (1000000, 0.0018), (1020000, 0.00004),
+            (1040000, 0.00004), (1050000, 0.0002), (1060000, 0.00004), (1080000, 0.00004), (1100000, 0.0003),
+            (1150000, 0.0001), (1200000, 0.0004), (1220000, 0.00002), (1240000, 0.00002), (1250000, 0.0001),
+            (1260000, 0.00002), (1280000, 0.00002), (1300000, 0.0003), (1350000, 0.0001), (1400000, 0.0003),
+            (1450000, 0.00004), (1500000, 0.0002), (1520000, 0.00002), (1540000, 0.00002), (1550000, 0.00004),
+            (1560000, 0.00002), (1580000, 0.00002), (1600000, 0.0003), (1620000, 0.00002), (1640000, 0.00002),
+            (1650000, 0.0001), (1660000, 0.00002), (1680000, 0.00002), (1700000, 0.0001), (1750000, 0.0001),
+            (1800000, 0.0003), (1900000, 0.0001), (1950000, 0.00002), (2000000, 0.0001), (2020000, 0.00002),
+            (2040000, 0.00002), (2050000, 0.00004), (2060000, 0.00002), (2080000, 0.00002), (2100000, 0.0001),
+            (2150000, 0.00004), (2200000, 0.0001), (2300000, 0.0001), (2400000, 0.0001), (2450000, 0.00002),
+            (2500000, 0.0001),
+        ],
+    },
+}
 
-# 总奖金概率分布表（来自游戏实际数据）
-# 格式: [(总奖金, 概率%), ...]
-TOTAL_PRIZE_DIST = [
-    (0, 22.2607), (20000, 38.9563), (40000, 8.9043), (50000, 8.9043), (60000, 1.1130),
-    (70000, 1.1130), (80000, 1.1130), (90000, 1.1130), (100000, 3.3391), (110000, 0.5565),
-    (120000, 1.6695), (130000, 0.5565), (140000, 1.6695), (150000, 2.2260), (160000, 0.6678),
-    (170000, 0.4452), (180000, 0.6678), (190000, 0.4452), (200000, 1.5582), (210000, 0.1113),
-    (220000, 0.1669), (230000, 0.1113), (240000, 0.1669), (250000, 0.3895), (260000, 0.1669),
-    (280000, 0.1669), (300000, 0.5565), (320000, 0.0333), (340000, 0.0333), (350000, 0.1113),
-    (360000, 0.0333), (380000, 0.0333), (400000, 0.1446), (420000, 0.0222), (440000, 0.0222),
-    (450000, 0.1113), (460000, 0.0222), (470000, 0.0111), (480000, 0.0222), (490000, 0.0111),
-    (500000, 0.1669), (510000, 0.0005), (520000, 0.0005), (530000, 0.0005), (540000, 0.0005),
-    (550000, 0.0044), (560000, 0.0005), (580000, 0.0005), (600000, 0.0083), (620000, 0.0016),
-    (640000, 0.0016), (650000, 0.0050), (660000, 0.0016), (680000, 0.0016), (700000, 0.0089),
-    (750000, 0.0050), (800000, 0.0089), (820000, 0.0011), (840000, 0.0011), (850000, 0.0022),
-    (860000, 0.0011), (880000, 0.0011), (900000, 0.0094), (920000, 0.0005), (940000, 0.0005),
-    (950000, 0.0038), (960000, 0.0005), (980000, 0.0005), (1000000, 0.0094), (1020000, 0.0002),
-    (1040000, 0.0002), (1050000, 0.0010), (1060000, 0.0002), (1080000, 0.0002), (1100000, 0.0017),
-    (1150000, 0.0004), (1200000, 0.0018), (1220000, 0.0001), (1240000, 0.0001), (1250000, 0.0005),
-    (1260000, 0.0001), (1280000, 0.0001), (1300000, 0.0013), (1350000, 0.0004), (1400000, 0.0015),
-    (1450000, 0.0002), (1500000, 0.0008), (1520000, 0.0001), (1540000, 0.0001), (1550000, 0.0002),
-    (1560000, 0.0001), (1580000, 0.0001), (1600000, 0.0013), (1620000, 0.0001), (1640000, 0.0001),
-    (1650000, 0.0004), (1660000, 0.0001), (1680000, 0.0001), (1700000, 0.0007), (1750000, 0.0003),
-    (1800000, 0.0014), (1900000, 0.0007), (1950000, 0.0001), (2000000, 0.0006), (2020000, 0.0001),
-    (2040000, 0.0001), (2050000, 0.0002), (2060000, 0.0001), (2080000, 0.0001), (2100000, 0.0007),
-    (2150000, 0.0002), (2200000, 0.0007), (2300000, 0.0005), (2400000, 0.0005), (2450000, 0.0001),
-    (2500000, 0.0003),
-]
-
-# 构建概率权重组（用于快速随机选择）
-_TOTAL_PRIZE_VALUES = [p for p, _ in TOTAL_PRIZE_DIST]
-_TOTAL_PRIZE_WEIGHTS = [w for _, w in TOTAL_PRIZE_DIST]
+# 构建各档概率权重组与派生信息
+for _card_conf in CARD_TYPES.values():
+    _card_conf["prize_values"] = [p for p, _ in _card_conf["prize_dist"]]
+    _card_conf["prize_weights"] = [w for _, w in _card_conf["prize_dist"]]
+    _card_conf["max_prize"] = max(p for p, _ in _card_conf["prize_dist"])
+    _card_conf["label"] = f"{_card_conf['cost'] // 10000}万"
 
 # 初始余额
 INITIAL_BALANCE = 3000000
 
-# 每日限购
-DAILY_LIMIT = 60
+# 每日限购已按档位独立配置于 CARD_TYPES（2万=20 / 3万=30 / 5万=50）
 
 # 刮取钱档位 [(金额, 描述), ...]
 PENSION_TIERS = [
@@ -99,33 +157,52 @@ LLM_TOOL_NAMES = [
 # ----------------------------------------------------------
 # 卡片生成（基于精确概率分布）
 # ----------------------------------------------------------
-def _decompose_prize(total: int) -> List[int]:
-    """将总奖金精确拆分为 CELL_PRIZE_TIERS 中的档位，不超过 15 格"""
+def _decompose_prize(total: int, cell_tiers: List[int],
+                     positions: int = CARD_POSITIONS) -> List[int]:
+    """将总奖金精确拆分为 cell_tiers 中的档位，不超过 positions 格。
+
+    通过按 10000 缩放的 DP 校验：只要存在 ≤ positions 格的标准档位组合，
+    就一定能拆出纯档位结果（仅当数学上无解时才做最后兜底）。
+    """
     if total == 0:
         return []
 
-    tiers = sorted(CELL_PRIZE_TIERS)
+    tiers = sorted(cell_tiers)
     min_p = tiers[0]
-    # 不可达的剩余金额：10000 和 30000
-    BAD = {10000, 30000}
     parts = []
     remaining = total
 
+    # 可表示性 DP：所有档位与总奖金均为 10000 的倍数，缩放到「万」为单位
+    unit = 10000
+    total_unit = total // unit
+    tiers_unit = [t // unit for t in tiers]
+    # INF 必须大于最大可用格数，避免「不可表示」被误判为可表示
+    INF = positions + 1
+    dp = [INF] * (total_unit + 1)
+    dp[0] = 0
+    for x in range(1, total_unit + 1):
+        for t in tiers_unit:
+            if t <= x and dp[x - t] + 1 < dp[x]:
+                dp[x] = dp[x - t] + 1
+
     while remaining > 0:
-        cells_left = CARD_POSITIONS - len(parts)
+        cells_left = positions - len(parts)
 
         if cells_left == 1:
             parts.append(remaining)
             break
 
-        # 候选：不超过剩余金额的档位，且不产生不可达剩余
+        # 候选：不超过剩余金额的档位，且剩余金额仍可在剩余格数内用标准档位表示
         cand = [t for t in tiers if t <= remaining]
         valid = [t for t in cand
-                 if remaining - t == 0 or remaining - t not in BAD]
+                 if remaining - t == 0
+                 or dp[(remaining - t) // unit] <= cells_left - 1]
         if not valid:
-            valid = cand
-        if not valid:
-            parts[-1] += remaining
+            # 数学上无解时的最后兜底：并入前一格
+            if parts:
+                parts[-1] += remaining
+            else:
+                parts.append(remaining)
             break
 
         # 格子充裕度决定选大还是选小
@@ -152,28 +229,30 @@ def _decompose_prize(total: int) -> List[int]:
     return parts
 
 
-def _generate_card() -> dict:
-    """根据精确概率分布生成一张刮刮卡"""
-    # 1. 按精确概率抽总奖金
-    total_prize = random.choices(_TOTAL_PRIZE_VALUES, weights=_TOTAL_PRIZE_WEIGHTS, k=1)[0]
+def _generate_card(card_conf: dict) -> dict:
+    """根据指定档位配置生成一张刮刮卡"""
+    # 1. 按该档位精确概率抽总奖金
+    total_prize = random.choices(
+        card_conf["prize_values"], weights=card_conf["prize_weights"], k=1)[0]
 
-    # 2. 拆分为各格奖金
-    cell_prizes = _decompose_prize(total_prize)
+    # 2. 按该档位单格档位拆分为各格奖金
+    cell_prizes = _decompose_prize(
+        total_prize, card_conf["cell_tiers"], card_conf["positions"])
 
-    # 3. 分配到 15 格（中奖格随机分布位置）
-    cells = [{"is_win": False, "prize": 0} for _ in range(CARD_POSITIONS)]
+    # 3. 分配到该档位格子（中奖格随机分布位置）
+    cells = [{"is_win": False, "prize": 0}
+             for _ in range(card_conf["positions"])]
     if cell_prizes:
-        # 随机选择中奖位置
-        indices = random.sample(range(CARD_POSITIONS), len(cell_prizes))
+        indices = random.sample(
+            range(card_conf["positions"]), len(cell_prizes))
         for idx, prize in zip(indices, cell_prizes):
             cells[idx] = {"is_win": True, "prize": prize}
 
-    return {"cells": cells, "total_prize": total_prize}
-
-
-def _card_grid(cells: List[dict]) -> List[List[dict]]:
-    """将 cells 一维数组转为二维网格"""
-    return [cells[i:i + CARD_COLS] for i in range(0, len(cells), CARD_COLS)]
+    return {
+        "cells": cells,
+        "total_prize": total_prize,
+        "layout": card_conf["layout"],
+    }
 
 
 def _prize_label(amount: int) -> str:
@@ -187,17 +266,23 @@ def _prize_label(amount: int) -> str:
 
 
 def _card_to_str(card_data: dict) -> str:
-    """将卡片格式化为文本（纯文本，无制表符）"""
-    grid = _card_grid(card_data["cells"])
+    """将卡片按档位排布格式化为文本（纯文本，无制表符）"""
+    cells = card_data["cells"]
+    layout = card_data.get("layout")
+    if not layout:
+        # 回退：按 CARD_COLS 均分行
+        layout = [CARD_COLS] * ((len(cells) + CARD_COLS - 1) // CARD_COLS)
     lines = []
-    for row in grid:
+    idx = 0
+    for row_len in layout:
         parts = []
-        for c in row:
+        for c in cells[idx:idx + row_len]:
             if c["is_win"]:
                 parts.append(f"{_prize_label(c['prize']):>3}")
             else:
                 parts.append("  ❌ ")
         lines.append("  ".join(parts))
+        idx += row_len
     return "\n".join(lines)
 
 
@@ -294,7 +379,7 @@ body{font-family:"MiSans",sans-serif;width:840px;}
     "nte_scratch_card",
     "CavinGou",
     "复刻 NTE 游戏的刮刮乐玩法",
-    "1.1.0",
+    "1.3.0",
 )
 class NteScratchCardPlugin(Star):
     """NTE 刮刮乐插件"""
@@ -311,8 +396,7 @@ class NteScratchCardPlugin(Star):
         self.napcat_host = self.config.get("napcat_host", "127.0.0.1:3000")
         self.napcat_token = self.config.get("napcat_token", "")
 
-        # 每日限购（从配置读取，默认 60）
-        self._daily_limit = max(1, int(self.config.get("daily_limit", DAILY_LIMIT)))
+        # 每日限购已按档位独立配置于 CARD_TYPES（2万=20 / 3万=30 / 5万=50）
 
         # 富爪榜排除天数：超过 N 天未抽卡的用户不进榜（0 = 不过滤）
         self._lb_inactive_days = max(0, int(self.config.get("leaderboard_inactive_days", 7)))
@@ -415,6 +499,8 @@ class NteScratchCardPlugin(Star):
                 "daily_date": "",
                 "daily_bought": 0,
                 "daily_extra": 0,
+                "daily_bought_by_tier": {str(k): 0 for k in CARD_TYPES},
+                "daily_extra_by_tier": {str(k): 0 for k in CARD_TYPES},
                 "daily_spent": 0,
                 "daily_won": 0,
                 "daily_cards_won": 0,
@@ -423,7 +509,20 @@ class NteScratchCardPlugin(Star):
                 "cycle_pos": 0,
                 "group_id": "",
                 "last_scratch_date": "",
+                "bookmarks": 0,  # 回声书签（道具），购卡累计，未来可兑换
             }
+
+    def _tier_daily(self, stats: dict) -> Tuple[dict, dict]:
+        """获取/初始化各档今日已购张数与额外额度（各档独立限购）。
+        返回 (daily_bought_by_tier, daily_extra_by_tier)，key 为档位字符串。"""
+        bought = stats.setdefault(
+            "daily_bought_by_tier", {str(k): 0 for k in CARD_TYPES})
+        extra = stats.setdefault(
+            "daily_extra_by_tier", {str(k): 0 for k in CARD_TYPES})
+        for k in CARD_TYPES:
+            bought.setdefault(str(k), 0)
+            extra.setdefault(str(k), 0)
+        return bought, extra
 
     # ----------------------------------------------------------
     # NapCat API: 获取群成员信息
@@ -463,12 +562,10 @@ class NteScratchCardPlugin(Star):
             return None, str(e)
 
     # ----------------------------------------------------------
-    # 指令: /刮刮乐 [数量]  - 购买并立即刮开
+    # 指令: /刮刮乐[2|3|5] [数量]  - 购买指定档位并立即刮开
     # ----------------------------------------------------------
-    @filter.command("刮刮乐")
-    async def scratch(self, event: AstrMessageEvent):
-        """购买刮刮卡并立即刮开，支持一次多张：/刮刮乐 10"""
-        # 解析数量
+    def _parse_count(self, event: AstrMessageEvent) -> int:
+        """解析购卡数量参数（默认 1，至少 1）"""
         args = event.message_str.strip().split()
         count = 1
         if len(args) >= 2:
@@ -478,14 +575,178 @@ class NteScratchCardPlugin(Star):
                     count = 1
             except ValueError:
                 pass
-        async for r in self._do_scratch(event, count):
+        return count
+
+    async def _reply_scratch(self, event: AstrMessageEvent, card_type: int):
+        """执行购卡并输出结果：单张为普通文本，多张为合并转发。"""
+        async for r in self._do_scratch(event, self._parse_count(event), card_type):
             if isinstance(r, str):
                 yield event.plain_result(r)
             else:
                 yield event.chain_result(r)
 
-    async def _do_scratch(self, event: AstrMessageEvent, count: int = 1):
-        """购买并刮开 count 张刮刮卡，生成结果：单张为 str，多张为合并转发节点列表。"""
+    @filter.command("刮刮乐")
+    async def scratch(self, event: AstrMessageEvent):
+        """购买 5 万档刮刮卡并立即刮开，支持一次多张：/刮刮乐 10"""
+        async for r in self._reply_scratch(event, 50000):
+            yield r
+
+    @filter.command("刮刮乐2")
+    async def scratch2(self, event: AstrMessageEvent):
+        """购买 2 万档刮刮卡并立即刮开：/刮刮乐2 [数量]"""
+        async for r in self._reply_scratch(event, 20000):
+            yield r
+
+    @filter.command("刮刮乐3")
+    async def scratch3(self, event: AstrMessageEvent):
+        """购买 3 万档刮刮卡并立即刮开：/刮刮乐3 [数量]"""
+        async for r in self._reply_scratch(event, 30000):
+            yield r
+
+    @filter.command("刮刮乐5")
+    async def scratch5(self, event: AstrMessageEvent):
+        """购买 5 万档刮刮卡并立即刮开：/刮刮乐5 [数量]"""
+        async for r in self._reply_scratch(event, 50000):
+            yield r
+
+    @filter.command("刮全部")
+    async def scratch_all(self, event: AstrMessageEvent):
+        """购买全部档位今日剩余额度并立即刮开：/刮全部"""
+        async for r in self._do_scratch_all(event):
+            if isinstance(r, str):
+                yield event.plain_result(r)
+            else:
+                yield event.chain_result(r)
+
+    async def _do_scratch_all(self, event: AstrMessageEvent):
+        """购买全部档位今日剩余额度并刮开，结果汇总为一条合并转发（汇总在前，各张随后）。"""
+        uid = event.get_sender_id()
+        self._ensure_user(uid)
+        stats = self._user_stats[uid]
+        today = date.today().isoformat()
+        stats["last_scratch_date"] = today  # 记录最后抽卡日期（用于富爪榜过滤）
+        if stats.get("daily_date") != today:
+            stats["daily_date"] = today
+            stats["daily_bought"] = 0
+            stats["daily_extra"] = 0
+            stats["daily_spent"] = 0
+            stats["daily_won"] = 0
+            stats["daily_cards_won"] = 0
+            for _k in CARD_TYPES:
+                stats.setdefault("daily_bought_by_tier", {})[str(_k)] = 0
+                stats.setdefault("daily_extra_by_tier", {})[str(_k)] = 0
+
+        bought_by_tier, extra_by_tier = self._tier_daily(stats)
+        # 各档今日剩余张数
+        remaining = {
+            k: max(0, CARD_TYPES[k]["daily_limit"]
+                   + extra_by_tier.get(str(k), 0)
+                   - bought_by_tier.get(str(k), 0))
+            for k in CARD_TYPES
+        }
+        total_count = sum(remaining.values())
+        if total_count <= 0:
+            yield "❌ 今日各档都已刮完，没有可购买的额度了！"
+            return
+
+        total_cost = sum(
+            remaining[k] * CARD_TYPES[k]["cost"] for k in CARD_TYPES)
+        if self._user_balance[uid] < total_cost:
+            yield (
+                f"❌ 余额不足！刮完全部 {total_count} 张需要 {_fmt_money(total_cost)} 方斯，"
+                f"当前只有 {_fmt_money(self._user_balance[uid])} 方斯"
+            )
+            return
+
+        # 扣款与统计
+        self._user_balance[uid] -= total_cost
+        stats["total_spent"] += total_cost
+        stats["cards_bought"] += total_count
+        stats["daily_bought"] += total_count
+        stats["daily_spent"] += total_cost
+
+        bot_uin = event.get_self_id()
+        node_list = []
+        tier_summaries = []
+        total_won_all = 0
+        win_count_all = 0
+
+        for k in sorted(CARD_TYPES):
+            conf = CARD_TYPES[k]
+            n = remaining[k]
+            if n <= 0:
+                continue
+            tier_won = 0
+            tier_win = 0
+            for i in range(1, n + 1):
+                card = _generate_card(conf)
+                prize = card["total_prize"]
+                total_won_all += prize
+                tier_won += prize
+                if prize > 0:
+                    win_count_all += 1
+                    tier_win += 1
+                stats["total_won"] += prize
+                stats["daily_won"] += prize
+
+                board = _card_to_str(card)
+                prize_line = f"🎉 中奖 {_fmt_money(prize)} 方斯" if prize > 0 else "😅 未中奖"
+                card_text = (
+                    f"🎴 {conf['label']} · 第 {i}/{n} 张\n"
+                    f"{board}\n"
+                    f"{prize_line}\n"
+                )
+                node_list.append(Node(
+                    name="刮刮乐",
+                    uin=bot_uin,
+                    content=[Plain(text=card_text)]
+                ))
+            bought_by_tier[str(k)] += n
+            stats["bookmarks"] = stats.get("bookmarks", 0) + n * conf["bookmark_reward"]
+            tier_summaries.append(
+                f"{conf['label']} × {n} 张："
+                f"{'🎉' if tier_win else '😅'} 中 {tier_win} 张，"
+                f"共 {_fmt_money(tier_won)} 方斯"
+            )
+
+        # 发奖
+        self._user_balance[uid] += total_won_all
+        stats["cards_won"] += win_count_all
+        stats["daily_cards_won"] += win_count_all
+        self._save_balance()
+        self._save_stats()
+        net = stats["total_won"] - stats["total_spent"]
+        batch_net = total_won_all - total_cost
+
+        remaining_desc = "  ".join(
+            f"{CARD_TYPES[k]['label']} "
+            f"{max(0, CARD_TYPES[k]['daily_limit'] + extra_by_tier.get(str(k), 0) - bought_by_tier.get(str(k), 0))}张"
+            for k in sorted(CARD_TYPES))
+
+        bookmark_gained = sum(
+            remaining[k] * CARD_TYPES[k]["bookmark_reward"] for k in CARD_TYPES)
+        summary_lines = [
+            f"🎴 刮刮乐 · 全部档位（共 {total_count} 张）",
+            *tier_summaries,
+            f"🔖 获得 {bookmark_gained} 个回声书签（累计 {stats.get('bookmarks', 0)} 个）",
+            f"📊 本次收入: {'+' if batch_net >= 0 else '-'}{_fmt_money(abs(batch_net))} 方斯",
+            f"📊 累计收入: {'+' if net >= 0 else '-'}{_fmt_money(abs(net))} 方斯",
+            f"📅 今日剩余: {remaining_desc}",
+            f"💰 当前余额: {_fmt_money(self._user_balance[uid])} 方斯",
+        ]
+        summary_nodes = [
+            Node(name="刮刮乐", uin=bot_uin, content=[Plain(text=line)])
+            for line in summary_lines
+        ]
+        # 汇总在前，各张随后
+        node_list = summary_nodes + node_list
+
+        yield [Nodes(nodes=node_list)]
+
+    async def _do_scratch(self, event: AstrMessageEvent, count: int = 1,
+                          card_type: int = 50000):
+        """购买并刮开 count 张指定档位刮刮卡，生成结果：单张为 str，多张为合并转发节点列表。"""
+        card_conf = CARD_TYPES.get(int(card_type), CARD_TYPES[50000])
         uid = event.get_sender_id()
         self._ensure_user(uid)
 
@@ -497,7 +758,7 @@ class NteScratchCardPlugin(Star):
         except Exception:
             pass
 
-        # 检查每日限购
+        # 检查每日限购（各档独立）
         stats = self._user_stats[uid]
         today = date.today().isoformat()
         stats["last_scratch_date"] = today  # 记录最后抽卡日期（用于富爪榜过滤）
@@ -508,15 +769,21 @@ class NteScratchCardPlugin(Star):
             stats["daily_spent"] = 0
             stats["daily_won"] = 0
             stats["daily_cards_won"] = 0
+            for _k in CARD_TYPES:
+                stats.setdefault("daily_bought_by_tier", {})[str(_k)] = 0
+                stats.setdefault("daily_extra_by_tier", {})[str(_k)] = 0
 
-        total_daily = self._daily_limit + stats.get("daily_extra", 0)
-        remaining_daily = total_daily - stats["daily_bought"]
+        tier_key = str(int(card_type)) if int(card_type) in CARD_TYPES else "50000"
+        bought_by_tier, extra_by_tier = self._tier_daily(stats)
+        tier_limit = card_conf["daily_limit"]
+        total_daily_tier = tier_limit + extra_by_tier[tier_key]
+        remaining_daily = total_daily_tier - bought_by_tier[tier_key]
         if count > remaining_daily:
-            yield f"❌ 今日剩余 {remaining_daily} 张，不够买 {count} 张！"
+            yield f"❌ {card_conf['label']}档今日剩余 {remaining_daily} 张，不够买 {count} 张！"
             return
 
         # 检查余额
-        total_cost = CARD_COST * count
+        total_cost = card_conf["cost"] * count
         if self._user_balance[uid] < total_cost:
             yield (
                 f"❌ 余额不足！需要 {_fmt_money(total_cost)} 方斯，"
@@ -530,13 +797,15 @@ class NteScratchCardPlugin(Star):
         stats["cards_bought"] += count
         stats["daily_bought"] += count
         stats["daily_spent"] += total_cost
+        bought_by_tier[tier_key] += count
+        stats["bookmarks"] = stats.get("bookmarks", 0) + count * card_conf["bookmark_reward"]
 
         total_won_all = 0
         win_count = 0
 
         if count == 1:
             # 单张：直接发结果
-            card = _generate_card()
+            card = _generate_card(card_conf)
             prize = card["total_prize"]
             total_won_all = prize
             win_count = 1 if prize > 0 else 0
@@ -552,14 +821,15 @@ class NteScratchCardPlugin(Star):
             self._save_stats()
             net = stats["total_won"] - stats["total_spent"]
 
-            remaining_now = total_daily - stats["daily_bought"]
+            remaining_now = total_daily_tier - bought_by_tier[tier_key]
             lines = [
-                f"🎴 刮刮乐",
+                f"🎴 刮刮乐 · {card_conf['label']}",
                 board,
                 prize_line,
+                f"🔖 获得 {card_conf['bookmark_reward']} 个回声书签（累计 {stats.get('bookmarks', 0)} 个）",
                 f"",
                 f"💰 余额: {_fmt_money(self._user_balance[uid])} 方斯  |  📊 {'+' if net >= 0 else '-'}{_fmt_money(abs(net))}",
-                f"📅 今日剩余: {remaining_now} / {total_daily} 张",
+                f"📅 {card_conf['label']}档今日剩余: {remaining_now} / {total_daily_tier} 张",
             ]
             yield "\n".join(lines)
         else:
@@ -568,7 +838,7 @@ class NteScratchCardPlugin(Star):
             node_list = []
 
             for i in range(1, count + 1):
-                card = _generate_card()
+                card = _generate_card(card_conf)
                 prize = card["total_prize"]
                 total_won_all += prize
                 if prize > 0:
@@ -579,7 +849,7 @@ class NteScratchCardPlugin(Star):
                 board = _card_to_str(card)
                 prize_line = f"🎉 中奖 {_fmt_money(prize)} 方斯" if prize > 0 else "😅 未中奖"
                 card_text = (
-                    f"🎴 第 {i}/{count} 张\n"
+                    f"🎴 {card_conf['label']} · 第 {i}/{count} 张\n"
                     f"{board}\n"
                     f"{prize_line}\n"
                 )
@@ -599,13 +869,14 @@ class NteScratchCardPlugin(Star):
             won_desc = f"🎉 中 {win_count}/{count} 张，共 {_fmt_money(total_won_all)} 方斯" if win_count > 0 else "😅 全部未中奖"
 
             # 汇总每项拆成单条消息（作为合并转发最前的一组节点）
-            remaining_now = total_daily - stats["daily_bought"]
+            remaining_now = total_daily_tier - bought_by_tier[tier_key]
             batch_net = total_won_all - total_cost
             summary_lines = [
                 won_desc,
-                f"📊 本次收入: {'+' if batch_net >= 0 else '-'}{_fmt_money(abs(batch_net))} 方斯",
+                f"� 获得 {count * card_conf['bookmark_reward']} 个回声书签（累计 {stats.get('bookmarks', 0)} 个）",
+                f"�📊 本次收入: {'+' if batch_net >= 0 else '-'}{_fmt_money(abs(batch_net))} 方斯",
                 f"📊 累计收入: {'+' if net >= 0 else '-'}{_fmt_money(abs(net))} 方斯",
-                f"📅 今日剩余: {remaining_now} / {total_daily} 张",
+                f"📅 {card_conf['label']}档今日剩余: {remaining_now} / {total_daily_tier} 张",
                 f"💰 当前余额: {_fmt_money(self._user_balance[uid])} 方斯",
             ]
             summary_nodes = [
@@ -626,12 +897,16 @@ class NteScratchCardPlugin(Star):
         lines = [
             "🎴 NTE 刮刮乐 - 帮助\n",
             "━━━ 指令列表 ━━━",
-            f"刮刮乐 [数量]   购买并刮开，默认1张，支持多张",
-            f"刮取钱          每日随机领取方斯（{len(self._pension_tiers)}档循环，发完重洗）",
-            f"刮余额          查看余额和游戏统计",
-            f"富爪榜          累计盈亏排行榜",
-            f"富爪日榜        今日盈亏排行榜",
-            f"刮刮乐帮助      显示此帮助",
+            f"刮刮乐 [数量]    购买5万档刮刮卡",
+            f"刮刮乐2 [数量]   购买2万档刮刮卡",
+            f"刮刮乐3 [数量]   购买3万档刮刮卡",
+            f"刮刮乐5 [数量]   购买5万档刮刮卡",
+            f"刮全部           刮完三档今日剩余额度",
+            f"刮取钱           每日随机领取方斯（{len(self._pension_tiers)}档循环，发完重洗）",
+            f"刮余额           查看余额和游戏统计",
+            f"富爪榜           累计盈亏排行榜",
+            f"富爪日榜         今日盈亏排行榜",
+            f"刮刮乐帮助       显示此帮助",
         ]
         # 管理员专属指令
         if event.is_admin():
@@ -642,8 +917,16 @@ class NteScratchCardPlugin(Star):
             ]
         lines += [
             "\n━━━ 介绍 ━━━",
-            f"初始余额: 300万  |  每日限购: {self._daily_limit}张",
-            f"售价: 50,000 方斯  |  格子: 3×5  |  最高奖: 250万",
+            f"初始余额: 300万",
+            "每日限购(各档独立): " + " / ".join(
+                f"{CARD_TYPES[k]['label']} {CARD_TYPES[k]['daily_limit']}张"
+                for k in sorted(CARD_TYPES)),
+            "档位售价: " + " / ".join(
+                _fmt_money(CARD_TYPES[k]["cost"]) for k in sorted(CARD_TYPES)) + " 方斯",
+            "回声书签: " + " / ".join(
+                f"{CARD_TYPES[k]['label']}+{CARD_TYPES[k]['bookmark_reward']}"
+                for k in sorted(CARD_TYPES)) + "（购卡累计，未来可兑换）",
+            f"格子: 3×5  |  最高奖: {_fmt_money(CARD_TYPES[50000]['max_prize'])} 方斯",
         ]
         yield event.plain_result("\n".join(lines))
 
@@ -718,21 +1001,31 @@ class NteScratchCardPlugin(Star):
             stats["daily_spent"] = 0
             stats["daily_won"] = 0
             stats["daily_cards_won"] = 0
+            for _k in CARD_TYPES:
+                stats.setdefault("daily_bought_by_tier", {})[str(_k)] = 0
+                stats.setdefault("daily_extra_by_tier", {})[str(_k)] = 0
             self._save_stats()
 
         net = stats["total_won"] - stats["total_spent"]
         win_rate = (stats["cards_won"] / stats["cards_bought"] * 100
                     if stats["cards_bought"] > 0 else 0)
 
-        total_daily = self._daily_limit + stats.get("daily_extra", 0)
-        remaining = total_daily - stats.get("daily_bought", 0)
+        # 各档独立限购汇总
+        bought_by_tier, extra_by_tier = self._tier_daily(stats)
+        remaining_desc = "  |  ".join(
+            f"{CARD_TYPES[k]['label']} "
+            f"{CARD_TYPES[k]['daily_limit'] + extra_by_tier.get(str(k), 0) - bought_by_tier.get(str(k), 0)}"
+            f"/{CARD_TYPES[k]['daily_limit'] + extra_by_tier.get(str(k), 0)}张"
+            for k in sorted(CARD_TYPES)
+        )
 
         lines = [
             "📊 个人数据\n",
             f"💰 余额: {_fmt_money(balance)} 方斯",
             f"📈 累计盈亏: {'+' if net >= 0 else '-'}{_fmt_money(abs(net))} 方斯",
-            f"📅 今日剩余: {remaining} / {total_daily} 张",
+            f"📅 今日剩余: {remaining_desc}",
             "",
+            f"🔖 回声书签: {stats.get('bookmarks', 0)} 个（购卡累计，可用于未来兑换）",
             f"🎴 购买次数: {stats['cards_bought']} 张",
             f"🏆 中奖次数: {stats['cards_won']} 次",
             f"📊 中奖率: {win_rate:.1f}%",
@@ -1025,27 +1318,33 @@ class NteScratchCardPlugin(Star):
             yield event.plain_result("❌ 请 @ 要发卡的用户")
             return
 
-        # 解析数量
+        # 解析数量与档位（数字∈档位视为档位，其余正整数视为数量；默认 5 万档 1 张）
         args = event.message_str.strip().split()
         extra = 1
+        tier = 50000
         for a in args:
             try:
-                extra = int(a)
-                break
+                v = int(a)
             except ValueError:
                 continue
-
+            if v in CARD_TYPES:
+                tier = v
+            elif v >= 1:
+                extra = v
         if extra < 1:
             extra = 1
 
         self._ensure_user(target_uid)
         target_name = await self._get_target_name(event, target_uid)
         yield event.plain_result(
-            await self._do_give_cards(target_uid, target_name, extra)
+            await self._do_give_cards(target_uid, target_name, extra, tier)
         )
 
-    async def _do_give_cards(self, target_uid: str, target_name: str, extra: int) -> str:
-        """给指定用户增加今日可购卡额度，返回结果文本。"""
+    async def _do_give_cards(self, target_uid: str, target_name: str, extra: int,
+                             tier: int = 50000) -> str:
+        """给指定用户增加指定档位今日可购卡额度，返回结果文本。"""
+        card_conf = CARD_TYPES.get(int(tier), CARD_TYPES[50000])
+        tier_key = str(int(tier)) if int(tier) in CARD_TYPES else "50000"
         stats = self._user_stats[target_uid]
 
         # 如果是新的一天，先重置
@@ -1057,17 +1356,23 @@ class NteScratchCardPlugin(Star):
             stats["daily_spent"] = 0
             stats["daily_won"] = 0
             stats["daily_cards_won"] = 0
+            for _k in CARD_TYPES:
+                stats.setdefault("daily_bought_by_tier", {})[str(_k)] = 0
+                stats.setdefault("daily_extra_by_tier", {})[str(_k)] = 0
 
-        # 累加额外次数
-        stats["daily_extra"] = stats.get("daily_extra", 0) + extra
+        # 累加该档位额外次数
+        _, extra_by_tier = self._tier_daily(stats)
+        extra_by_tier[tier_key] = extra_by_tier.get(tier_key, 0) + extra
         self._save_stats()
 
-        total_daily = self._daily_limit + stats["daily_extra"]
-        remaining = total_daily - stats["daily_bought"]
+        limit = card_conf["daily_limit"]
+        total_daily = limit + extra_by_tier[tier_key]
+        bought_by_tier, _ = self._tier_daily(stats)
+        remaining = total_daily - bought_by_tier.get(tier_key, 0)
 
         return (
             f"🎴 发卡成功！\n"
-            f"{target_name} 获得 +{extra} 张额外额度\n"
+            f"{target_name} 获得 {card_conf['label']}档 +{extra} 张额外额度\n"
             f"📅 今日可购: {remaining} / {total_daily} 张"
         )
 
@@ -1199,7 +1504,9 @@ class NteScratchCardPlugin(Star):
             if r["type"] == "money":
                 detail = f"{_fmt_money(r.get('amount', 0))} 方斯"
             else:
-                detail = f"+{r.get('extra', 1)} 张额度"
+                _t = r.get("tier", 50000)
+                _tlabel = CARD_TYPES.get(int(_t), CARD_TYPES[50000])["label"]
+                detail = f"{_tlabel}档 +{r.get('extra', 1)} 张额度"
             lines.append(
                 f"• {r['id']} {r.get('nickname', r['uid'])} 申请 {detail}"
                 f"（{r.get('created_at', '')}）")
@@ -1209,7 +1516,7 @@ class NteScratchCardPlugin(Star):
         return "\n".join(lines)
 
     async def _create_request(self, event: AstrMessageEvent, req_type: str,
-                              amount: int = 0, extra: int = 0) -> dict:
+                              amount: int = 0, extra: int = 0, tier: int = 50000) -> dict:
         """创建一条待审批申请并持久化，返回请求字典。"""
         self._req_seq += 1
         req_id = f"REQ-{self._req_seq:06d}"
@@ -1221,6 +1528,7 @@ class NteScratchCardPlugin(Star):
             "type": req_type,
             "amount": amount,
             "extra": extra,
+            "tier": int(tier) if int(tier) in CARD_TYPES else 50000,
             "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "status": "pending",
             "approved_by": "",
@@ -1293,13 +1601,16 @@ class NteScratchCardPlugin(Star):
         return None, ""
 
     @filter.llm_tool(name="scratch_ntc_card")
-    async def scratch_ntc_card(self, event: AstrMessageEvent, count: int = 1):
-        """帮用户购买并刮开异环刮刮卡，返回中奖结果与最新余额。
+    async def scratch_ntc_card(self, event: AstrMessageEvent, count: int = 1,
+                               tier: int = 50000):
+        """帮用户购买并刮开异环刮刮卡，返回中奖结果与最新余额。可选卡档位 2 万 / 3 万 / 5 万。
 
         Args:
             count(number): 要刮的刮刮卡张数，最小 1，默认 1
+            tier(number): 卡档位售价，可选 20000 / 30000 / 50000，默认 50000
         """
-        async for r in self._do_scratch(event, max(1, int(count))):
+        card_type = int(tier) if int(tier) in CARD_TYPES else 50000
+        async for r in self._do_scratch(event, max(1, int(count)), card_type):
             if isinstance(r, str):
                 yield event.plain_result(r)
             else:
@@ -1365,13 +1676,16 @@ class NteScratchCardPlugin(Star):
         )
 
     @filter.llm_tool(name="give_cards")
-    async def llm_give_cards(self, event: AstrMessageEvent, target: str, extra: int = 1):
-        """给用户增加今日购卡额度。若说话者是管理员则直接发放；否则自动转为申请并通知管理员批准。管理员说「给我/我自己」即表示发给自己；普通用户申请只能给自己。
+    async def llm_give_cards(self, event: AstrMessageEvent, target: str, extra: int = 1,
+                             tier: int = 50000):
+        """给用户增加今日购卡额度。若说话者是管理员则直接发放；否则自动转为申请并通知管理员批准。管理员说「给我/我自己」即表示发给自己；普通用户申请只能给自己。可指定卡档位。
 
         Args:
             target(string): 目标用户的群昵称或 QQ 号，如"张三"或"123456"；「我」「自己」「本人」表示本人
             extra(number): 额外增加的购卡张数，默认 1
+            tier(number): 卡档位售价，可选 20000 / 30000 / 50000，默认 50000
         """
+        card_type = int(tier) if int(tier) in CARD_TYPES else 50000
         if self._is_admin(event):
             target_uid, target_name = await self._resolve_target(event, target)
             if not target_uid:
@@ -1379,22 +1693,24 @@ class NteScratchCardPlugin(Star):
                 return
             self._ensure_user(target_uid)
             yield event.plain_result(
-                await self._do_give_cards(target_uid, target_name, max(1, int(extra)))
+                await self._do_give_cards(target_uid, target_name, max(1, int(extra)), card_type)
             )
             return
         # 非管理员：转为申请流程（只能申请给自己）
-        async for r in self._do_request_cards(event, extra):
+        async for r in self._do_request_cards(event, extra, card_type):
             yield r
 
-    async def _do_request_cards(self, event: AstrMessageEvent, extra: int):
+    async def _do_request_cards(self, event: AstrMessageEvent, extra: int,
+                                tier: int = 50000):
         """成员申请购卡额度到自己账户（需管理员批准）。"""
         uid = event.get_sender_id()
         self._ensure_user(uid)
         extra = max(1, int(extra))
-        req = await self._create_request(event, "cards", extra=extra)
+        card_conf = CARD_TYPES.get(int(tier), CARD_TYPES[50000])
+        req = await self._create_request(event, "cards", extra=extra, tier=tier)
         notify = (
             f"📨 新申请 {req['id']}\n"
-            f"{req['nickname']} 申请 +{extra} 张购卡额度\n"
+            f"{req['nickname']} 申请 {card_conf['label']}档 +{extra} 张购卡额度\n"
             f"回复「批准 {req['id']}」或「拒绝 {req['id']}」"
         )
         notify_nodes = await self._notify_admins(event, notify)
@@ -1404,7 +1720,7 @@ class NteScratchCardPlugin(Star):
             yield event.plain_result(
                 "⚠️ 找不到可通知的管理员（请在 AstrBot 后台配置管理员），申请已记录，可由管理员在群里审批")
         yield event.plain_result(
-            f"📨 申请已提交：+{extra} 张额度（{req['id']}）\n"
+            f"📨 申请已提交：{card_conf['label']}档 +{extra} 张额度（{req['id']}）\n"
             f"⏳ 等待管理员批准后生效"
         )
 
@@ -1429,7 +1745,9 @@ class NteScratchCardPlugin(Star):
         else:
             self._ensure_user(req["uid"])
             result = await self._do_give_cards(
-                req["uid"], req["nickname"], max(1, int(req.get("extra", 1))))
+                req["uid"], req["nickname"],
+                max(1, int(req.get("extra", 1))),
+                req.get("tier", 50000))
         req["status"] = "approved"
         req["approved_by"] = event.get_sender_id()
         req["approved_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")

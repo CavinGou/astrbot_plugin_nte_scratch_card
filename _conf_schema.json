@@ -30,12 +30,6 @@
       }
     }
   },
-  "daily_limit": {
-    "type": "int",
-    "description": "每人每日限购张数",
-    "hint": "默认 60 张",
-    "default": 60
-  },
   "enable_llm_tools": {
     "type": "bool",
     "description": "启用 LLM 自然语言指令",
