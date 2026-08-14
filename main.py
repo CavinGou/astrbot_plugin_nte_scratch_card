@@ -379,7 +379,7 @@ body{font-family:"MiSans",sans-serif;width:840px;}
     "nte_scratch_card",
     "CavinGou",
     "复刻 NTE 游戏的刮刮乐玩法",
-    "1.3.0",
+    "1.3.1",
 )
 class NteScratchCardPlugin(Star):
     """NTE 刮刮乐插件"""
@@ -497,8 +497,6 @@ class NteScratchCardPlugin(Star):
                 "cards_bought": 0,
                 "cards_won": 0,
                 "daily_date": "",
-                "daily_bought": 0,
-                "daily_extra": 0,
                 "daily_bought_by_tier": {str(k): 0 for k in CARD_TYPES},
                 "daily_extra_by_tier": {str(k): 0 for k in CARD_TYPES},
                 "daily_spent": 0,
@@ -609,140 +607,6 @@ class NteScratchCardPlugin(Star):
         async for r in self._reply_scratch(event, 50000):
             yield r
 
-    @filter.command("刮全部")
-    async def scratch_all(self, event: AstrMessageEvent):
-        """购买全部档位今日剩余额度并立即刮开：/刮全部"""
-        async for r in self._do_scratch_all(event):
-            if isinstance(r, str):
-                yield event.plain_result(r)
-            else:
-                yield event.chain_result(r)
-
-    async def _do_scratch_all(self, event: AstrMessageEvent):
-        """购买全部档位今日剩余额度并刮开，结果汇总为一条合并转发（汇总在前，各张随后）。"""
-        uid = event.get_sender_id()
-        self._ensure_user(uid)
-        stats = self._user_stats[uid]
-        today = date.today().isoformat()
-        stats["last_scratch_date"] = today  # 记录最后抽卡日期（用于富爪榜过滤）
-        if stats.get("daily_date") != today:
-            stats["daily_date"] = today
-            stats["daily_bought"] = 0
-            stats["daily_extra"] = 0
-            stats["daily_spent"] = 0
-            stats["daily_won"] = 0
-            stats["daily_cards_won"] = 0
-            for _k in CARD_TYPES:
-                stats.setdefault("daily_bought_by_tier", {})[str(_k)] = 0
-                stats.setdefault("daily_extra_by_tier", {})[str(_k)] = 0
-
-        bought_by_tier, extra_by_tier = self._tier_daily(stats)
-        # 各档今日剩余张数
-        remaining = {
-            k: max(0, CARD_TYPES[k]["daily_limit"]
-                   + extra_by_tier.get(str(k), 0)
-                   - bought_by_tier.get(str(k), 0))
-            for k in CARD_TYPES
-        }
-        total_count = sum(remaining.values())
-        if total_count <= 0:
-            yield "❌ 今日各档都已刮完，没有可购买的额度了！"
-            return
-
-        total_cost = sum(
-            remaining[k] * CARD_TYPES[k]["cost"] for k in CARD_TYPES)
-        if self._user_balance[uid] < total_cost:
-            yield (
-                f"❌ 余额不足！刮完全部 {total_count} 张需要 {_fmt_money(total_cost)} 方斯，"
-                f"当前只有 {_fmt_money(self._user_balance[uid])} 方斯"
-            )
-            return
-
-        # 扣款与统计
-        self._user_balance[uid] -= total_cost
-        stats["total_spent"] += total_cost
-        stats["cards_bought"] += total_count
-        stats["daily_bought"] += total_count
-        stats["daily_spent"] += total_cost
-
-        bot_uin = event.get_self_id()
-        node_list = []
-        tier_summaries = []
-        total_won_all = 0
-        win_count_all = 0
-
-        for k in sorted(CARD_TYPES):
-            conf = CARD_TYPES[k]
-            n = remaining[k]
-            if n <= 0:
-                continue
-            tier_won = 0
-            tier_win = 0
-            for i in range(1, n + 1):
-                card = _generate_card(conf)
-                prize = card["total_prize"]
-                total_won_all += prize
-                tier_won += prize
-                if prize > 0:
-                    win_count_all += 1
-                    tier_win += 1
-                stats["total_won"] += prize
-                stats["daily_won"] += prize
-
-                board = _card_to_str(card)
-                prize_line = f"🎉 中奖 {_fmt_money(prize)} 方斯" if prize > 0 else "😅 未中奖"
-                card_text = (
-                    f"🎴 {conf['label']} · 第 {i}/{n} 张\n"
-                    f"{board}\n"
-                    f"{prize_line}\n"
-                )
-                node_list.append(Node(
-                    name="刮刮乐",
-                    uin=bot_uin,
-                    content=[Plain(text=card_text)]
-                ))
-            bought_by_tier[str(k)] += n
-            stats["bookmarks"] = stats.get("bookmarks", 0) + n * conf["bookmark_reward"]
-            tier_summaries.append(
-                f"{conf['label']} × {n} 张："
-                f"{'🎉' if tier_win else '😅'} 中 {tier_win} 张，"
-                f"共 {_fmt_money(tier_won)} 方斯"
-            )
-
-        # 发奖
-        self._user_balance[uid] += total_won_all
-        stats["cards_won"] += win_count_all
-        stats["daily_cards_won"] += win_count_all
-        self._save_balance()
-        self._save_stats()
-        net = stats["total_won"] - stats["total_spent"]
-        batch_net = total_won_all - total_cost
-
-        remaining_desc = "  ".join(
-            f"{CARD_TYPES[k]['label']} "
-            f"{max(0, CARD_TYPES[k]['daily_limit'] + extra_by_tier.get(str(k), 0) - bought_by_tier.get(str(k), 0))}张"
-            for k in sorted(CARD_TYPES))
-
-        bookmark_gained = sum(
-            remaining[k] * CARD_TYPES[k]["bookmark_reward"] for k in CARD_TYPES)
-        summary_lines = [
-            f"🎴 刮刮乐 · 全部档位（共 {total_count} 张）",
-            *tier_summaries,
-            f"🔖 获得 {bookmark_gained} 个回声书签（累计 {stats.get('bookmarks', 0)} 个）",
-            f"📊 本次收入: {'+' if batch_net >= 0 else '-'}{_fmt_money(abs(batch_net))} 方斯",
-            f"📊 累计收入: {'+' if net >= 0 else '-'}{_fmt_money(abs(net))} 方斯",
-            f"📅 今日剩余: {remaining_desc}",
-            f"💰 当前余额: {_fmt_money(self._user_balance[uid])} 方斯",
-        ]
-        summary_nodes = [
-            Node(name="刮刮乐", uin=bot_uin, content=[Plain(text=line)])
-            for line in summary_lines
-        ]
-        # 汇总在前，各张随后
-        node_list = summary_nodes + node_list
-
-        yield [Nodes(nodes=node_list)]
-
     async def _do_scratch(self, event: AstrMessageEvent, count: int = 1,
                           card_type: int = 50000):
         """购买并刮开 count 张指定档位刮刮卡，生成结果：单张为 str，多张为合并转发节点列表。"""
@@ -764,8 +628,6 @@ class NteScratchCardPlugin(Star):
         stats["last_scratch_date"] = today  # 记录最后抽卡日期（用于富爪榜过滤）
         if stats.get("daily_date") != today:
             stats["daily_date"] = today
-            stats["daily_bought"] = 0
-            stats["daily_extra"] = 0
             stats["daily_spent"] = 0
             stats["daily_won"] = 0
             stats["daily_cards_won"] = 0
@@ -795,7 +657,6 @@ class NteScratchCardPlugin(Star):
         self._user_balance[uid] -= total_cost
         stats["total_spent"] += total_cost
         stats["cards_bought"] += count
-        stats["daily_bought"] += count
         stats["daily_spent"] += total_cost
         bought_by_tier[tier_key] += count
         stats["bookmarks"] = stats.get("bookmarks", 0) + count * card_conf["bookmark_reward"]
@@ -873,8 +734,8 @@ class NteScratchCardPlugin(Star):
             batch_net = total_won_all - total_cost
             summary_lines = [
                 won_desc,
-                f"� 获得 {count * card_conf['bookmark_reward']} 个回声书签（累计 {stats.get('bookmarks', 0)} 个）",
-                f"�📊 本次收入: {'+' if batch_net >= 0 else '-'}{_fmt_money(abs(batch_net))} 方斯",
+                f"🔖 获得 {count * card_conf['bookmark_reward']} 个回声书签（累计 {stats.get('bookmarks', 0)} 个）",
+                f"📊 本次收入: {'+' if batch_net >= 0 else '-'}{_fmt_money(abs(batch_net))} 方斯",
                 f"📊 累计收入: {'+' if net >= 0 else '-'}{_fmt_money(abs(net))} 方斯",
                 f"📅 {card_conf['label']}档今日剩余: {remaining_now} / {total_daily_tier} 张",
                 f"💰 当前余额: {_fmt_money(self._user_balance[uid])} 方斯",
@@ -901,7 +762,6 @@ class NteScratchCardPlugin(Star):
             f"刮刮乐2 [数量]   购买2万档刮刮卡",
             f"刮刮乐3 [数量]   购买3万档刮刮卡",
             f"刮刮乐5 [数量]   购买5万档刮刮卡",
-            f"刮全部           刮完三档今日剩余额度",
             f"刮取钱           每日随机领取方斯（{len(self._pension_tiers)}档循环，发完重洗）",
             f"刮余额           查看余额和游戏统计",
             f"富爪榜           累计盈亏排行榜",
@@ -996,8 +856,6 @@ class NteScratchCardPlugin(Star):
         today = date.today().isoformat()
         if stats.get("daily_date") != today:
             stats["daily_date"] = today
-            stats["daily_bought"] = 0
-            stats["daily_extra"] = 0
             stats["daily_spent"] = 0
             stats["daily_won"] = 0
             stats["daily_cards_won"] = 0
@@ -1351,8 +1209,6 @@ class NteScratchCardPlugin(Star):
         today = date.today().isoformat()
         if stats.get("daily_date") != today:
             stats["daily_date"] = today
-            stats["daily_bought"] = 0
-            stats["daily_extra"] = 0
             stats["daily_spent"] = 0
             stats["daily_won"] = 0
             stats["daily_cards_won"] = 0

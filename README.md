@@ -10,7 +10,7 @@
 | 插件名称 | `astrbot_plugin_nte_scratch_card` |
 | 展示名 | 异环刮刮乐 |
 | 作者 | [CavinGou](https://github.com/CavinGou) |
-| 版本 | v1.3.0 |
+| 版本 | v1.3.1 |
 | 仓库 | [CavinGou/astrbot_plugin_nte_scratch_card](https://github.com/CavinGou/astrbot_plugin_nte_scratch_card) |
 | 支持平台 | 仅 OneBot v11（`aiocqhttp`） |
 | AstrBot 版本 | `>= 4.17.0` |
@@ -24,7 +24,6 @@
 | `刮刮乐2 [数量]` | 购买 2 万档刮刮卡 |
 | `刮刮乐3 [数量]` | 购买 3 万档刮刮卡 |
 | `刮刮乐5 [数量]` | 购买 5 万档刮刮卡 |
-| `刮全部` | 一次刮完三档今日剩余全部额度（合并转发） |
 | `刮取钱` | 周期内顺序随机的四档补助（30/50/70/100 万方斯） |
 | `刮余额` | 查看余额和游戏统计数据 |
 | `富爪榜` | 查看累计盈亏排行榜（图片） |
