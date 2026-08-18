@@ -21,365 +21,34 @@ from astrbot.core.utils.astrbot_path import get_astrbot_data_path
 from astrbot.core.utils.quoted_message_parser import extract_quoted_message_text
 
 
-# ============================================================
-# 卡片档位配置（2 万 / 3 万 / 5 万方斯三档）
-# ============================================================
-CARD_POSITIONS = 15
-CARD_ROWS = 3
-CARD_COLS = 5
-
-# 各档卡片配置：
-#   cost       - 售价（方斯）
-#   cell_tiers - 单格可用奖金档位
-#   prize_dist - 总奖金概率分布表（来自游戏实际数据）[(总奖金, 概率%), ...]
-CARD_TYPES = {
-    20000: {
-        "cost": 20000,
-        "daily_limit": 20,
-        "bookmark_reward": 1,
-        "positions": 15,
-        "layout": [5, 5, 5],
-        "cell_tiers": [10000, 20000, 30000, 50000, 100000, 150000,
-                       200000, 300000, 500000],
-        "prize_dist": [
-            (0, 28.4892), (10000, 54.4646), (20000, 10.8929), (30000, 5.8654), (40000, 0.1173),
-            (50000, 0.0922), (60000, 0.013), (70000, 0.0038), (80000, 0.0096), (90000, 0.008),
-            (100000, 0.0155), (110000, 0.0017), (120000, 0.0044), (130000, 0.0019), (140000, 0.0019),
-            (150000, 0.0038), (160000, 0.0021), (170000, 0.0006), (180000, 0.0013), (190000, 0.0008),
-            (200000, 0.0082), (210000, 0.0003), (220000, 0.0003), (230000, 0.0003), (240000, 0.0003),
-            (250000, 0.0002), (260000, 0.0002), (280000, 0.0001), (290000, 0.0001), (300000, 0.0001),
-            (350000, 0.00004), (400000, 0.00004), (500000, 0.00004),
-        ],
-    },
-    30000: {
-        "cost": 30000,
-        "daily_limit": 30,
-        "bookmark_reward": 3,
-        "positions": 15,
-        "layout": [5, 5, 5],
-        "cell_tiers": [10000, 20000, 30000, 50000, 100000, 150000, 200000,
-                       300000, 500000, 800000, 1000000, 1500000],
-        "prize_dist": [
-            (0, 22.7142), (20000, 25.959), (30000, 25.959), (40000, 9.7346), (50000, 6.4898),
-            (60000, 1.9469), (70000, 0.649), (80000, 1.6224), (90000, 1.6224), (100000, 1.9469),
-            (110000, 0.1298), (120000, 0.3569), (130000, 0.1622), (140000, 0.1947), (150000, 0.2596),
-            (160000, 0.013), (170000, 0.0065), (180000, 0.0211), (190000, 0.0065), (200000, 0.0227),
-            (210000, 0.0081), (220000, 0.0065), (230000, 0.0065), (240000, 0.0146), (250000, 0.0114),
-            (260000, 0.0065), (270000, 0.0081), (280000, 0.0032), (290000, 0.0032), (300000, 0.0341),
-            (320000, 0.0032), (330000, 0.0019), (340000, 0.0019), (350000, 0.0052), (360000, 0.0052),
-            (380000, 0.0019), (390000, 0.0019), (400000, 0.0091), (420000, 0.0026), (430000, 0.0006),
-            (440000, 0.0006), (450000, 0.0084), (460000, 0.0013), (470000, 0.0006), (480000, 0.0013),
-            (490000, 0.0013), (500000, 0.0078), (510000, 0.0003), (520000, 0.0003), (530000, 0.0003),
-            (540000, 0.0003), (550000, 0.001), (560000, 0.0003), (570000, 0.0002), (580000, 0.0002),
-            (590000, 0.0002), (600000, 0.0031), (620000, 0.0005), (630000, 0.0003), (640000, 0.0003),
-            (650000, 0.0013), (660000, 0.0006), (680000, 0.0003), (690000, 0.0003), (700000, 0.0015),
-            (720000, 0.0003), (750000, 0.0011), (800000, 0.0016), (820000, 0.0002), (830000, 0.0002),
-            (840000, 0.0002), (850000, 0.0003), (860000, 0.0003), (880000, 0.0002), (890000, 0.0002),
-            (900000, 0.0023), (920000, 0.0003), (930000, 0.0002), (940000, 0.0002), (950000, 0.0008),
-            (960000, 0.0003), (980000, 0.0002), (990000, 0.0002), (1000000, 0.0019), (1020000, 0.0001),
-            (1030000, 0.0001), (1040000, 0.0001), (1050000, 0.0002), (1060000, 0.0001), (1080000, 0.0001),
-            (1090000, 0.0001), (1100000, 0.0004), (1120000, 0.0001), (1150000, 0.0002), (1200000, 0.0003),
-            (1220000, 0.00003), (1230000, 0.00003), (1240000, 0.00003), (1250000, 0.0001), (1260000, 0.0001),
-            (1280000, 0.00003), (1290000, 0.00003), (1300000, 0.0004), (1320000, 0.00003), (1350000, 0.0001),
-            (1400000, 0.0002), (1450000, 0.0001), (1500000, 0.0003),
-        ],
-    },
-    50000: {
-        "cost": 50000,
-        "daily_limit": 50,
-        "bookmark_reward": 5,
-        "positions": 12,
-        "layout": [4, 4, 4],
-        "cell_tiers": [20000, 50000, 100000, 150000, 200000,
-                       300000, 500000, 800000, 1000000, 1500000],
-        "prize_dist": [
-            (0, 21.1851), (20000, 10.5926), (40000, 21.1851), (50000, 21.1851), (60000, 2.7541),
-            (70000, 2.7541), (80000, 2.7541), (90000, 2.7541), (100000, 8.2622), (110000, 0.4237),
-            (120000, 1.2711), (130000, 0.4237), (140000, 1.2711), (150000, 1.6948), (160000, 0.1907),
-            (170000, 0.1271), (180000, 0.1907), (190000, 0.1271), (200000, 0.4449), (210000, 0.0212),
-            (220000, 0.0318), (230000, 0.0212), (240000, 0.0318), (250000, 0.0741), (260000, 0.0318),
-            (280000, 0.0318), (300000, 0.1059), (320000, 0.0013), (340000, 0.0013), (350000, 0.0042),
-            (360000, 0.0013), (380000, 0.0013), (400000, 0.0055), (420000, 0.0008), (440000, 0.0008),
-            (450000, 0.0042), (460000, 0.0008), (470000, 0.0004), (480000, 0.0008), (490000, 0.0004),
-            (500000, 0.0064), (510000, 0.0002), (520000, 0.0002), (530000, 0.0002), (540000, 0.0002),
-            (550000, 0.0017), (560000, 0.0002), (580000, 0.0002), (600000, 0.0032), (620000, 0.0006),
-            (640000, 0.0006), (650000, 0.0019), (660000, 0.0006), (680000, 0.0006), (700000, 0.0034),
-            (750000, 0.0019), (800000, 0.0034), (820000, 0.0002), (840000, 0.0002), (850000, 0.0004),
-            (860000, 0.0002), (880000, 0.0002), (900000, 0.0018), (920000, 0.0001), (940000, 0.0001),
-            (950000, 0.0007), (960000, 0.0001), (980000, 0.0001), (1000000, 0.0018), (1020000, 0.00004),
-            (1040000, 0.00004), (1050000, 0.0002), (1060000, 0.00004), (1080000, 0.00004), (1100000, 0.0003),
-            (1150000, 0.0001), (1200000, 0.0004), (1220000, 0.00002), (1240000, 0.00002), (1250000, 0.0001),
-            (1260000, 0.00002), (1280000, 0.00002), (1300000, 0.0003), (1350000, 0.0001), (1400000, 0.0003),
-            (1450000, 0.00004), (1500000, 0.0002), (1520000, 0.00002), (1540000, 0.00002), (1550000, 0.00004),
-            (1560000, 0.00002), (1580000, 0.00002), (1600000, 0.0003), (1620000, 0.00002), (1640000, 0.00002),
-            (1650000, 0.0001), (1660000, 0.00002), (1680000, 0.00002), (1700000, 0.0001), (1750000, 0.0001),
-            (1800000, 0.0003), (1900000, 0.0001), (1950000, 0.00002), (2000000, 0.0001), (2020000, 0.00002),
-            (2040000, 0.00002), (2050000, 0.00004), (2060000, 0.00002), (2080000, 0.00002), (2100000, 0.0001),
-            (2150000, 0.00004), (2200000, 0.0001), (2300000, 0.0001), (2400000, 0.0001), (2450000, 0.00002),
-            (2500000, 0.0001),
-        ],
-    },
-}
-
-# 构建各档概率权重组与派生信息
-for _card_conf in CARD_TYPES.values():
-    _card_conf["prize_values"] = [p for p, _ in _card_conf["prize_dist"]]
-    _card_conf["prize_weights"] = [w for _, w in _card_conf["prize_dist"]]
-    _card_conf["max_prize"] = max(p for p, _ in _card_conf["prize_dist"])
-    _card_conf["label"] = f"{_card_conf['cost'] // 10000}万"
-
-# 初始余额
-INITIAL_BALANCE = 3000000
-
-# 每日限购已按档位独立配置于 CARD_TYPES（2万=20 / 3万=30 / 5万=50）
-
-# 刮取钱档位 [(金额, 描述), ...]
-PENSION_TIERS = [
-    (300000,  "管理局给娜娜莉的医疗补贴下来了，手头宽裕了些"),
-    (500000,  "雨燕出行跑了一天单，腰都要断了，赚点辛苦钱。"),
-    (700000,  "背着店长偷偷把伊波恩抵押了…发了笔小财！"),
-    (1000000, "赶上粉爪大劫案，浑水摸鱼捞了一笔，赶紧跑路！"),
-]
-
-# 注册的全部 LLM 工具名（用于开关统一激活/停用）
-LLM_TOOL_NAMES = [
-    "scratch_ntc_card",
-    "daily_pension",
-    "check_scratch_balance",
-    "give_money",
-    "give_cards",
-    "admin_approve_request",
-    "admin_reject_request",
-    "list_pending_requests",
-]
+# 从 core 子包导入配置、工具与模板（相对导入，符合 AstrBot 插件主流惯例）
+from .core import (
+    AMULET_BACKDOOR_COST,
+    AMULET_HAND_COST,
+    BOOKMARK_CARD_MULT,
+    BOOKMARK_MONEY_AMOUNT,
+    BOOKMARK_MONEY_UNIT,
+    CARD_COLS,
+    CARD_POSITIONS,
+    CARD_ROWS,
+    CARD_TYPES,
+    INITIAL_BALANCE,
+    LLM_TOOL_NAMES,
+    PENSION_TIERS,
+    LEADERBOARD_HTML,
+    _card_to_str,
+    _decompose_prize,
+    _fmt_money,
+    _generate_card,
+    _prize_label,
+)
 
 
-# ----------------------------------------------------------
-# 卡片生成（基于精确概率分布）
-# ----------------------------------------------------------
-def _decompose_prize(total: int, cell_tiers: List[int],
-                     positions: int = CARD_POSITIONS) -> List[int]:
-    """将总奖金精确拆分为 cell_tiers 中的档位，不超过 positions 格。
-
-    通过按 10000 缩放的 DP 校验：只要存在 ≤ positions 格的标准档位组合，
-    就一定能拆出纯档位结果（仅当数学上无解时才做最后兜底）。
-    """
-    if total == 0:
-        return []
-
-    tiers = sorted(cell_tiers)
-    min_p = tiers[0]
-    parts = []
-    remaining = total
-
-    # 可表示性 DP：所有档位与总奖金均为 10000 的倍数，缩放到「万」为单位
-    unit = 10000
-    total_unit = total // unit
-    tiers_unit = [t // unit for t in tiers]
-    # INF 必须大于最大可用格数，避免「不可表示」被误判为可表示
-    INF = positions + 1
-    dp = [INF] * (total_unit + 1)
-    dp[0] = 0
-    for x in range(1, total_unit + 1):
-        for t in tiers_unit:
-            if t <= x and dp[x - t] + 1 < dp[x]:
-                dp[x] = dp[x - t] + 1
-
-    while remaining > 0:
-        cells_left = positions - len(parts)
-
-        if cells_left == 1:
-            parts.append(remaining)
-            break
-
-        # 候选：不超过剩余金额的档位，且剩余金额仍可在剩余格数内用标准档位表示
-        cand = [t for t in tiers if t <= remaining]
-        valid = [t for t in cand
-                 if remaining - t == 0
-                 or dp[(remaining - t) // unit] <= cells_left - 1]
-        if not valid:
-            # 数学上无解时的最后兜底：并入前一格
-            if parts:
-                parts[-1] += remaining
-            else:
-                parts.append(remaining)
-            break
-
-        # 格子充裕度决定选大还是选小
-        min_needed = (remaining + min_p - 1) // min_p
-        if min_needed <= cells_left:
-            # 随机混合：大额和小额混搭，兼顾视觉冲击和数量多样性
-            if remaining >= 100000:
-                avg = remaining // cells_left
-                large = [t for t in valid if t >= avg]
-                if random.random() < 0.3 or not large:
-                    chosen = random.choice(valid[:max(1, (len(valid) + 1) // 2)])
-                else:
-                    chosen = random.choice(large)
-            else:
-                chosen = random.choice(valid[:max(1, (len(valid) + 1) // 2)])
-        else:
-            avg = remaining // cells_left
-            large = [t for t in valid if t >= avg]
-            chosen = random.choice(large if large else valid)
-
-        parts.append(chosen)
-        remaining -= chosen
-
-    return parts
-
-
-def _generate_card(card_conf: dict) -> dict:
-    """根据指定档位配置生成一张刮刮卡"""
-    # 1. 按该档位精确概率抽总奖金
-    total_prize = random.choices(
-        card_conf["prize_values"], weights=card_conf["prize_weights"], k=1)[0]
-
-    # 2. 按该档位单格档位拆分为各格奖金
-    cell_prizes = _decompose_prize(
-        total_prize, card_conf["cell_tiers"], card_conf["positions"])
-
-    # 3. 分配到该档位格子（中奖格随机分布位置）
-    cells = [{"is_win": False, "prize": 0}
-             for _ in range(card_conf["positions"])]
-    if cell_prizes:
-        indices = random.sample(
-            range(card_conf["positions"]), len(cell_prizes))
-        for idx, prize in zip(indices, cell_prizes):
-            cells[idx] = {"is_win": True, "prize": prize}
-
-    return {
-        "cells": cells,
-        "total_prize": total_prize,
-        "layout": card_conf["layout"],
-    }
-
-
-def _prize_label(amount: int) -> str:
-    """奖金金额转短标签"""
-    if amount >= 10000:
-        w = amount // 10000
-        if amount % 10000 == 0:
-            return f"{w}万"
-        return f"{w}.{amount % 10000 // 1000}万"
-    return str(amount)
-
-
-def _card_to_str(card_data: dict) -> str:
-    """将卡片按档位排布格式化为文本（纯文本，无制表符）"""
-    cells = card_data["cells"]
-    layout = card_data.get("layout")
-    if not layout:
-        # 回退：按 CARD_COLS 均分行
-        layout = [CARD_COLS] * ((len(cells) + CARD_COLS - 1) // CARD_COLS)
-    lines = []
-    idx = 0
-    for row_len in layout:
-        parts = []
-        for c in cells[idx:idx + row_len]:
-            if c["is_win"]:
-                parts.append(f"{_prize_label(c['prize']):>3}")
-            else:
-                parts.append("  ❌ ")
-        lines.append("  ".join(parts))
-        idx += row_len
-    return "\n".join(lines)
-
-
-def _fmt_money(amount: int) -> str:
-    """格式化金额，支持负数"""
-    sign = "-" if amount < 0 else ""
-    s = str(abs(amount))
-    result = []
-    for i, ch in enumerate(reversed(s)):
-        if i > 0 and i % 3 == 0:
-            result.append(",")
-        result.append(ch)
-    return sign + "".join(reversed(result))
-
-
-# ----------------------------------------------------------
-# 排行榜 HTML 模板
-# ----------------------------------------------------------
-LEADERBOARD_HTML = """<!DOCTYPE html>
-<html><head><meta charset="utf-8">
-<link rel="preconnect" href="https://cdn.jsdelivr.net">
-<link rel="stylesheet" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/misans@4.1.0/lib/Normal/MiSans-Medium.min.css" /> 
-<link rel="stylesheet" crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/misans@4.1.0/lib/Normal/MiSans-Bold.min.css" />
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-html,body{height:fit-content}
-body{font-family:"MiSans",sans-serif;width:840px;}
-.outer-frame{background: linear-gradient(180deg, #232225, #FFF584);width: 840px;padding: 16px;min-height:100vh;}
-.title{text-align:right;font-size:42px;font-weight:1000;transform:skewX(-7deg);color:#F0C954;padding:8px 16px 12px 0}
-.header{display:flex;align-items:center;background:linear-gradient(180deg,#3a3020,#2a2218);border:1px solid rgba(0,0,0,.1);border-radius:12px;margin-bottom:12px}
-.header div{font-size:20px;font-weight:700;color:#D2D2D2;-webkit-text-stroke:#000000 1px}
-.h-rank{flex:260 0 0;text-align:center;background:#9F7D42;border-radius:12px 0 0 12px}
-.h-name{flex:790 0 0;padding:0 16px;background:#7D46A2}
-.h-name span{padding-left:100px}
-.h-money{flex:510 0 0;text-align:center;background:#464544;padding:0 15px 0 0;border-radius:0 12px 12px 0}
-.h-rank span,.h-name span,.h-money span{display:inline-block;transform:skewX(-7deg)}
-.card{margin-bottom:8px;overflow:hidden}
-.row{display:flex;align-items:stretch;min-height:78px;overflow:hidden;position:relative}
-.badge{flex:260 0 0;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;--r:6px;-webkit-mask:radial-gradient(circle at 8px 8px,transparent var(--r),#fff var(--r)) -8px -8px/100% 100% no-repeat,radial-gradient(circle at calc(100% - 8px) 8px,transparent var(--r),#fff var(--r)) 8px -8px/100% 100% no-repeat,radial-gradient(circle at calc(100% - 8px) calc(100% - 8px),transparent var(--r),#fff var(--r)) 8px 8px/100% 100% no-repeat,radial-gradient(circle at 8px calc(100% - 8px),transparent var(--r),#fff var(--r)) -8px 8px/100% 100% no-repeat;mask:radial-gradient(circle at 8px 8px,transparent var(--r),#fff var(--r)) -8px -8px/100% 100% no-repeat,radial-gradient(circle at calc(100% - 8px) 8px,transparent var(--r),#fff var(--r)) 8px -8px/100% 100% no-repeat,radial-gradient(circle at calc(100% - 8px) calc(100% - 8px),transparent var(--r),#fff var(--r)) 8px 8px/100% 100% no-repeat,radial-gradient(circle at 8px calc(100% - 8px),transparent var(--r),#fff var(--r)) -8px 8px/100% 100% no-repeat}
-.badge::before{content:'';position:absolute;inset:0;pointer-events:none;--r:8px;--w:2px;--c:#3C3833;--xc:#838383;background:radial-gradient(var(--r) at var(--r) var(--r),transparent calc(97% - var(--w)),var(--c) calc(100% - var(--w)) 98%,transparent) calc(-1*var(--r)) calc(-1*var(--r))/100% 100% no-repeat,radial-gradient(var(--r) at calc(100% - var(--r)) var(--r),transparent calc(97% - var(--w)),var(--c) calc(100% - var(--w)) 98%,transparent) var(--r) calc(-1*var(--r))/100% 100% no-repeat,radial-gradient(var(--r) at calc(100% - var(--r)) calc(100% - var(--r)),transparent calc(97% - var(--w)),var(--c) calc(100% - var(--w)) 98%,transparent) var(--r) var(--r)/100% 100% no-repeat,radial-gradient(var(--r) at var(--r) calc(100% - var(--r)),transparent calc(97% - var(--w)),var(--c) calc(100% - var(--w)) 98%,transparent) calc(-1*var(--r)) var(--r)/100% 100% no-repeat,linear-gradient(var(--c),var(--c)) var(--r) 0/calc(100% - 2*var(--r)) var(--w) no-repeat,linear-gradient(var(--c),var(--c)) var(--r) 100%/calc(100% - 2*var(--r)) var(--w) no-repeat,linear-gradient(var(--c),var(--c)) 0 var(--r)/var(--w) calc(100% - 2*var(--r)) no-repeat,repeating-linear-gradient(to bottom,var(--xc) 0,var(--xc) 3px,transparent 3px,transparent 6px) 100% var(--r)/var(--w) calc(100% - 2*var(--r)) no-repeat}
-.badge .num{font-size:32px;font-weight:900;line-height:1;color:#FFF;transform:skewX(-7deg);-webkit-text-stroke:2px #090909;z-index:1}
-.badge .line{position:absolute;right:0;top:10%;height:80%;width:1px}
-.name-section{flex:790 0 0;display:flex;flex-direction:column;justify-content:space-between;padding:5px 16px;position:relative;min-width:0;background:linear-gradient(180deg,#DDD,#FFF);--r:6px;-webkit-mask:radial-gradient(circle at 8px 8px,transparent var(--r),#fff var(--r)) -8px -8px/100% 100% no-repeat,radial-gradient(circle at calc(100% - 8px) 8px,transparent var(--r),#fff var(--r)) 8px -8px/100% 100% no-repeat,radial-gradient(circle at calc(100% - 8px) calc(100% - 8px),transparent var(--r),#fff var(--r)) 8px 8px/100% 100% no-repeat,radial-gradient(circle at 8px calc(100% - 8px),transparent var(--r),#fff var(--r)) -8px 8px/100% 100% no-repeat;mask:radial-gradient(circle at 8px 8px,transparent var(--r),#fff var(--r)) -8px -8px/100% 100% no-repeat,radial-gradient(circle at calc(100% - 8px) 8px,transparent var(--r),#fff var(--r)) 8px -8px/100% 100% no-repeat,radial-gradient(circle at calc(100% - 8px) calc(100% - 8px),transparent var(--r),#fff var(--r)) 8px 8px/100% 100% no-repeat,radial-gradient(circle at 8px calc(100% - 8px),transparent var(--r),#fff var(--r)) -8px 8px/100% 100% no-repeat}
-.name-section::before{content:'';position:absolute;inset:0;pointer-events:none;--r:8px;--w:2px;--c:#3C3833;--xc:#838383;background:radial-gradient(var(--r) at var(--r) var(--r),transparent calc(97% - var(--w)),var(--c) calc(100% - var(--w)) 98%,transparent) calc(-1*var(--r)) calc(-1*var(--r))/100% 100% no-repeat,radial-gradient(var(--r) at calc(100% - var(--r)) var(--r),transparent calc(97% - var(--w)),var(--c) calc(100% - var(--w)) 98%,transparent) var(--r) calc(-1*var(--r))/100% 100% no-repeat,radial-gradient(var(--r) at calc(100% - var(--r)) calc(100% - var(--r)),transparent calc(97% - var(--w)),var(--c) calc(100% - var(--w)) 98%,transparent) var(--r) var(--r)/100% 100% no-repeat,radial-gradient(var(--r) at var(--r) calc(100% - var(--r)),transparent calc(97% - var(--w)),var(--c) calc(100% - var(--w)) 98%,transparent) calc(-1*var(--r)) var(--r)/100% 100% no-repeat,linear-gradient(var(--c),var(--c)) var(--r) 0/calc(100% - 2*var(--r)) var(--w) no-repeat,linear-gradient(var(--c),var(--c)) var(--r) 100%/calc(100% - 2*var(--r)) var(--w) no-repeat,repeating-linear-gradient(to bottom,var(--xc) 0,var(--xc) 3px,transparent 3px,transparent 6px) 0 var(--r)/var(--w) calc(100% - 2*var(--r)) no-repeat,repeating-linear-gradient(to bottom,var(--xc) 0,var(--xc) 3px,transparent 3px,transparent 6px) 100% var(--r)/var(--w) calc(100% - 2*var(--r)) no-repeat}
-.id-prefix{font-size:8px;padding:0 8px;color:#000;background:#A2A2A2;border-radius:8px}
-.id-text{font-size:8px;opacity:.5;margin-bottom:3px;font-weight:700}
-.name-text{font-size:18px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-left:100px}
-.barcode{margin-top:6px;height:10px;width:80px}
-.money-section{flex:510 0 0;display:flex;align-items:center;justify-content:flex-end;padding:12px 15px 12px 0;gap:10px;background:linear-gradient(180deg,#DDD,#FFF);position:relative;--r:6px;-webkit-mask:radial-gradient(circle at 8px 8px,transparent var(--r),#fff var(--r)) -8px -8px/100% 100% no-repeat,radial-gradient(circle at calc(100% - 8px) 8px,transparent var(--r),#fff var(--r)) 8px -8px/100% 100% no-repeat,radial-gradient(circle at calc(100% - 8px) calc(100% - 8px),transparent var(--r),#fff var(--r)) 8px 8px/100% 100% no-repeat,radial-gradient(circle at 8px calc(100% - 8px),transparent var(--r),#fff var(--r)) -8px 8px/100% 100% no-repeat;mask:radial-gradient(circle at 8px 8px,transparent var(--r),#fff var(--r)) -8px -8px/100% 100% no-repeat,radial-gradient(circle at calc(100% - 8px) 8px,transparent var(--r),#fff var(--r)) 8px -8px/100% 100% no-repeat,radial-gradient(circle at calc(100% - 8px) calc(100% - 8px),transparent var(--r),#fff var(--r)) 8px 8px/100% 100% no-repeat,radial-gradient(circle at 8px calc(100% - 8px),transparent var(--r),#fff var(--r)) -8px 8px/100% 100% no-repeat}
-.money-section::before{content:'';position:absolute;inset:0;pointer-events:none;--r:8px;--w:2px;--c:#3C3833;--xc:#838383;background:radial-gradient(var(--r) at var(--r) var(--r),transparent calc(97% - var(--w)),var(--c) calc(100% - var(--w)) 98%,transparent) calc(-1*var(--r)) calc(-1*var(--r))/100% 100% no-repeat,radial-gradient(var(--r) at calc(100% - var(--r)) var(--r),transparent calc(97% - var(--w)),var(--c) calc(100% - var(--w)) 98%,transparent) var(--r) calc(-1*var(--r))/100% 100% no-repeat,radial-gradient(var(--r) at calc(100% - var(--r)) calc(100% - var(--r)),transparent calc(97% - var(--w)),var(--c) calc(100% - var(--w)) 98%,transparent) var(--r) var(--r)/100% 100% no-repeat,radial-gradient(var(--r) at var(--r) calc(100% - var(--r)),transparent calc(97% - var(--w)),var(--c) calc(100% - var(--w)) 98%,transparent) calc(-1*var(--r)) var(--r)/100% 100% no-repeat,linear-gradient(var(--c),var(--c)) var(--r) 0/calc(100% - 2*var(--r)) var(--w) no-repeat,linear-gradient(var(--c),var(--c)) var(--r) 100%/calc(100% - 2*var(--r)) var(--w) no-repeat,linear-gradient(var(--c),var(--c)) 100% var(--r)/var(--w) calc(100% - 2*var(--r)) no-repeat,repeating-linear-gradient(to bottom,var(--xc) 0,var(--xc) 3px,transparent 3px,transparent 6px) 0 var(--r)/var(--w) calc(100% - 2*var(--r)) no-repeat}
-.coin-icon{height:24px;width:auto;flex-shrink:0;margin-right:0}
-.money-text{font-size:25px;font-weight:900;color:#FFC431;-webkit-text-stroke:1.5px #090909;text-stroke:1px #090909}
-.hot-tag{position:absolute;right:16px;bottom:4px;font-size:8px;letter-spacing:1px;opacity:.25;font-weight:700}
-.dash{width:1px;align-self:stretch;margin:12px 0;border-left:1px dashed rgba(150,130,80,.4);flex-shrink:0}
-.card-normal .badge{background:#5D7893}
-.card-normal .badge .line{background:#c0b090}
-.card-normal .name-text{color:#2a2218}
-.card-normal .id-text{color:#a09070}
-.card-normal .barcode{background:repeating-linear-gradient(90deg,transparent 0,transparent 2px,rgba(100,80,40,.12) 2px,rgba(100,80,40,.12) 3px,transparent 3px,transparent 5px)}
-.card-normal .dash{border-left-color:#c0b090}
-.card-normal .hot-tag{color:#a09070}
-.card-r1 .badge{background:linear-gradient(180deg,#c8a030,#8a6a18)}
-.card-r2 .badge{background:linear-gradient(180deg,#b0b0b0,#707070)}
-.card-r3 .badge{background:linear-gradient(180deg,#c08040,#7a4a20)}
-</style></head><body>
-<div class="outer-frame">
-<div class="title">{{ title }}</div>
-<div class="header">
-    <div class="h-rank"><span>排名</span></div>
-    <div class="h-name"><span>名称</span></div>
-    <div class="h-money"><span>财富值</span></div>
-</div>
-{% for item in items %}
-<div class="card card-normal {% if item.rank <= 3 %}card-r{{ item.rank }}{% endif %}">
-    <div class="row">
-        <div class="badge"><div class="num">{{ item.rank }}</div></div>
-        <div class="name-section">
-            <div class="id-text"><span class="id-prefix">NTE</span> NO.{{ '%06d' % item.uid_int if item.uid_int else '000000' }}</div>
-            <div class="name-text">{{ item.name }}</div>
-            <div class="barcode"></div>
-        </div>
-        <div class="money-section"><img src="{{ coin_icon }}" alt="Coin" class="coin-icon"><div class="money-text">{{ item.amount }}</div></div>
-    </div>
-</div>
-{% endfor %}
-</div>
-</body></html>"""
-
-
-# ============================================================
-# 插件主类
-# ============================================================
 @register(
     "nte_scratch_card",
     "CavinGou",
     "复刻 NTE 游戏的刮刮乐玩法",
-    "1.3.1",
+    "1.4.0",
 )
 class NteScratchCardPlugin(Star):
     """NTE 刮刮乐插件"""
@@ -507,11 +176,46 @@ class NteScratchCardPlugin(Star):
                 "cycle_pos": 0,
                 "group_id": "",
                 "last_scratch_date": "",
-                "bookmarks": 0,  # 回声书签（道具），购卡累计，未来可兑换
+                "bookmarks": 0,  # 回声书签（道具），购卡累计，可用于兑换
+                "amulet_date": "",  # 当日保底护符生效日期（当日有效，跨天失效）
+                "amulet_type": "",  # 当日生效的护符类型："hand"(大手) / "backdoor"(后门)
             }
 
+    def _amulet_active(self, stats: dict) -> str:
+        """返回今日生效的护符类型（"" 表示未生效；"hand" 大手；"backdoor" 后门）。"""
+        if stats.get("amulet_date", "") != date.today().isoformat():
+            return ""
+        return stats.get("amulet_type", "")
+
+    def _amulet_status_text(self, stats: dict) -> str:
+        """返回护符状态展示文本。"""
+        t = self._amulet_active(stats)
+        if t == "hand":
+            return "🟢 大手生效（未中奖全额返还）"
+        if t == "backdoor":
+            return "🟢 后门生效（中奖低于成本返差额）"
+        return "⚪ 未生效"
+
+    def _amulet_refund_amount(self, stats: dict, card_conf: dict, prize: int) -> int:
+        """计算该张卡在护符生效时应返还的方斯（0 表示不触发）。
+
+        大手(hand)：未中奖(prize==0) → 全额返还成本
+        后门(backdoor)：中奖低于成本(prize<cost，含未中奖) → 返还差额 cost-prize
+        """
+        t = self._amulet_active(stats)
+        cost = card_conf["cost"]
+        if t == "hand" and prize == 0:
+            return cost
+        if t == "backdoor" and prize < cost:
+            return cost - prize
+        return 0
+
+    def _bookmark_cost_for_tier(self, card_conf: dict) -> int:
+        """计算兑换该档 1 张追加额度所需的书签数。"""
+        return BOOKMARK_CARD_MULT * card_conf["bookmark_reward"]
+
     def _tier_daily(self, stats: dict) -> Tuple[dict, dict]:
-        """获取/初始化各档今日已购张数与额外额度（各档独立限购）。
+        """获取/初始化各档今日已购张数与追加额度（各档独立限购）。
         返回 (daily_bought_by_tier, daily_extra_by_tier)，key 为档位字符串。"""
         bought = stats.setdefault(
             "daily_bought_by_tier", {str(k): 0 for k in CARD_TYPES})
@@ -607,6 +311,150 @@ class NteScratchCardPlugin(Star):
         async for r in self._reply_scratch(event, 50000):
             yield r
 
+    @filter.command("刮全部")
+    async def scratch_all(self, event: AstrMessageEvent):
+        """购买所有档位今日基础限购剩余的全部额度并立即刮开（不含发放的追加额度）：/刮全部"""
+        async for r in self._do_scratch_all(event):
+            if isinstance(r, str):
+                yield event.plain_result(r)
+            else:
+                yield event.chain_result(r)
+
+    async def _do_scratch_all(self, event: AstrMessageEvent):
+        """购买并刮开所有档位今日基础限购剩余的全部额度（不含发放的追加额度），结果用合并转发汇总。"""
+        uid = event.get_sender_id()
+        self._ensure_user(uid)
+        stats = self._user_stats[uid]
+
+        # 记录用户所在群号
+        try:
+            gid = str(event.message_obj.group_id)
+            if gid:
+                stats["group_id"] = gid
+        except Exception:
+            pass
+
+        # 跨天重置每日限购
+        today = date.today().isoformat()
+        stats["last_scratch_date"] = today
+        if stats.get("daily_date") != today:
+            stats["daily_date"] = today
+            stats["daily_spent"] = 0
+            stats["daily_won"] = 0
+            stats["daily_cards_won"] = 0
+            for _k in CARD_TYPES:
+                stats.setdefault("daily_bought_by_tier", {})[str(_k)] = 0
+                stats.setdefault("daily_extra_by_tier", {})[str(_k)] = 0
+
+        # 计算各档基础限购剩余额度并规划购买（不含发放的追加额度）
+        plans = []  # (tier_key, card_conf, remaining)
+        total_cost = 0
+        total_cards = 0
+        for k in sorted(CARD_TYPES):
+            card_conf = CARD_TYPES[k]
+            bought_by_tier, _ = self._tier_daily(stats)
+            tier_key = str(k)
+            remaining = card_conf["daily_limit"] - bought_by_tier.get(tier_key, 0)
+            if remaining > 0:
+                plans.append((tier_key, card_conf, remaining))
+                total_cards += remaining
+                total_cost += remaining * card_conf["cost"]
+
+        if not plans:
+            yield "❌ 所有档位今日额度都已用完！"
+            return
+
+        # 检查余额
+        if self._user_balance[uid] < total_cost:
+            yield (f"❌ 余额不足！购买全部额度需要 {_fmt_money(total_cost)} 方斯，"
+                   f"当前只有 {_fmt_money(self._user_balance[uid])} 方斯")
+            return
+
+        # 扣款
+        self._user_balance[uid] -= total_cost
+        stats["total_spent"] += total_cost
+        stats["daily_spent"] += total_cost
+        stats["cards_bought"] += total_cards
+
+        bot_uin = event.get_self_id()
+        node_list = []
+        total_won_all = 0
+        win_count_all = 0
+        bookmarked_total = 0
+        amulet_refund_total = 0
+        amulet_used_total = 0
+        card_no = 0
+
+        for tier_key, card_conf, remaining in plans:
+            bought_by_tier, _ = self._tier_daily(stats)
+            # 只购买基础限购额度，全部张数均赠送回声书签
+            bought_by_tier[tier_key] = bought_by_tier.get(tier_key, 0) + remaining
+            bookmarked_total += remaining * card_conf["bookmark_reward"]
+
+            # 每张卡各占一条节点（与多张购卡一致）
+            for _ in range(remaining):
+                card_no += 1
+                card = _generate_card(card_conf)
+                prize = card["total_prize"]
+                total_won_all += prize
+                if prize > 0:
+                    win_count_all += 1
+                stats["total_won"] += prize
+                stats["daily_won"] += prize
+
+                # 护符：当日保底生效且满足条件 → 返还（刮全部只买基础额度）
+                amulet_refund = self._amulet_refund_amount(stats, card_conf, prize)
+                if amulet_refund:
+                    amulet_used_total += 1
+                    amulet_refund_total += amulet_refund
+                    total_won_all += amulet_refund
+                    stats["total_won"] += amulet_refund
+                    stats["daily_won"] += amulet_refund
+
+                board = _card_to_str(card)
+                prize_line = f"🎉 中奖 {_fmt_money(prize)} 方斯" if prize > 0 else "😅 未中奖"
+                if amulet_refund:
+                    prize_line += f"\n🛡️ 护符生效！返还 {_fmt_money(amulet_refund)} 方斯"
+                card_text = (
+                    f"🎴 {card_conf['label']} · 第 {card_no}/{total_cards} 张\n"
+                    f"{board}\n"
+                    f"{prize_line}\n"
+                )
+                node_list.append(Node(
+                    name="刮刮乐", uin=bot_uin,
+                    content=[Plain(text=card_text)]
+                ))
+
+        stats["cards_won"] += win_count_all
+        stats["daily_cards_won"] += win_count_all
+
+        # 发奖
+        stats["bookmarks"] = stats.get("bookmarks", 0) + bookmarked_total
+        self._user_balance[uid] += total_won_all
+        self._save_balance()
+        self._save_stats()
+
+        net = stats["total_won"] - stats["total_spent"]
+        batch_net = total_won_all - total_cost
+        won_desc = (f"🏆 中 {win_count_all}/{total_cards} 张，共 {_fmt_money(total_won_all)} 方斯"
+                    if win_count_all > 0 else "😅 全部未中奖")
+        summary_lines = [
+            f"🎴 已刮完全部额度：{total_cards} 张",
+            won_desc,
+            f"🔖 获得 {bookmarked_total} 个回声书签（累计 {stats.get('bookmarks', 0)} 个）",
+        ]
+        if amulet_used_total:
+            summary_lines.append(
+                f"🛡️ 护符生效 {amulet_used_total} 个，返还 {_fmt_money(amulet_refund_total)} 方斯")
+        summary_lines += [
+            f"📊 本次收入: {'+' if batch_net >= 0 else '-'}{_fmt_money(abs(batch_net))} 方斯",
+            f"📊 累计收入: {'+' if net >= 0 else '-'}{_fmt_money(abs(net))} 方斯",
+            f"💰 当前余额: {_fmt_money(self._user_balance[uid])} 方斯",
+        ]
+        # 总结信息单独作为普通消息发出（合并转发有节点上限，避免占用）
+        yield "\n".join(summary_lines)
+        yield [Nodes(nodes=node_list)]
+
     async def _do_scratch(self, event: AstrMessageEvent, count: int = 1,
                           card_type: int = 50000):
         """购买并刮开 count 张指定档位刮刮卡，生成结果：单张为 str，多张为合并转发节点列表。"""
@@ -658,8 +506,15 @@ class NteScratchCardPlugin(Star):
         stats["total_spent"] += total_cost
         stats["cards_bought"] += count
         stats["daily_spent"] += total_cost
+        # 统计本次购卡中落在「管理员发放的追加额度」内的张数：这些卡不赠送回声书签
+        bought_before = bought_by_tier[tier_key]
+        extra_used = (
+            max(0, bought_before + count - tier_limit)
+            - max(0, bought_before - tier_limit)
+        )
+        bookmarked_count = count - extra_used
         bought_by_tier[tier_key] += count
-        stats["bookmarks"] = stats.get("bookmarks", 0) + count * card_conf["bookmark_reward"]
+        stats["bookmarks"] = stats.get("bookmarks", 0) + bookmarked_count * card_conf["bookmark_reward"]
 
         total_won_all = 0
         win_count = 0
@@ -673,9 +528,17 @@ class NteScratchCardPlugin(Star):
             stats["total_won"] += prize
             stats["daily_won"] += prize
 
+            # 护符：当日保底生效、该卡在基础额度内且满足条件 → 返还
+            amulet_refund = 0
+            amulet_used = 0
+            if bought_before < tier_limit:
+                amulet_refund = self._amulet_refund_amount(stats, card_conf, prize)
+                if amulet_refund:
+                    amulet_used = 1
+
             board = _card_to_str(card)
             prize_line = f"🎉 中奖 {_fmt_money(prize)} 方斯！" if prize > 0 else "😅 未中奖"
-            self._user_balance[uid] += prize
+            self._user_balance[uid] += prize + amulet_refund
             stats["cards_won"] += win_count
             stats["daily_cards_won"] += win_count
             self._save_balance()
@@ -687,7 +550,11 @@ class NteScratchCardPlugin(Star):
                 f"🎴 刮刮乐 · {card_conf['label']}",
                 board,
                 prize_line,
-                f"🔖 获得 {card_conf['bookmark_reward']} 个回声书签（累计 {stats.get('bookmarks', 0)} 个）",
+            ]
+            if amulet_used:
+                lines.append(f"🛡️ 护符生效！返还 {_fmt_money(amulet_refund)} 方斯")
+            lines += [
+                f"🔖 获得 {bookmarked_count * card_conf['bookmark_reward']} 个回声书签（累计 {stats.get('bookmarks', 0)} 个）",
                 f"",
                 f"💰 余额: {_fmt_money(self._user_balance[uid])} 方斯  |  📊 {'+' if net >= 0 else '-'}{_fmt_money(abs(net))}",
                 f"📅 {card_conf['label']}档今日剩余: {remaining_now} / {total_daily_tier} 张",
@@ -697,6 +564,10 @@ class NteScratchCardPlugin(Star):
             # 多张：用合并转发
             bot_uin = event.get_self_id()
             node_list = []
+            amulet_refund_total = 0
+            amulet_used_total = 0
+            # 本次购买中落在基础额度内的张数（前 base_left 张），护符只对基础额度生效
+            base_left = max(0, tier_limit - bought_before)
 
             for i in range(1, count + 1):
                 card = _generate_card(card_conf)
@@ -707,8 +578,21 @@ class NteScratchCardPlugin(Star):
                 stats["total_won"] += prize
                 stats["daily_won"] += prize
 
+                # 护符：当日保底生效、该张在基础额度内且满足条件 → 返还
+                amulet_refund = 0
+                if i <= base_left:
+                    amulet_refund = self._amulet_refund_amount(stats, card_conf, prize)
+                    if amulet_refund:
+                        amulet_used_total += 1
+                        amulet_refund_total += amulet_refund
+                        total_won_all += amulet_refund
+                        stats["total_won"] += amulet_refund
+                        stats["daily_won"] += amulet_refund
+
                 board = _card_to_str(card)
                 prize_line = f"🎉 中奖 {_fmt_money(prize)} 方斯" if prize > 0 else "😅 未中奖"
+                if amulet_refund:
+                    prize_line += f"\n🛡️ 护符生效！返还 {_fmt_money(amulet_refund)} 方斯"
                 card_text = (
                     f"🎴 {card_conf['label']} · 第 {i}/{count} 张\n"
                     f"{board}\n"
@@ -734,7 +618,12 @@ class NteScratchCardPlugin(Star):
             batch_net = total_won_all - total_cost
             summary_lines = [
                 won_desc,
-                f"🔖 获得 {count * card_conf['bookmark_reward']} 个回声书签（累计 {stats.get('bookmarks', 0)} 个）",
+                f"🔖 获得 {bookmarked_count * card_conf['bookmark_reward']} 个回声书签（累计 {stats.get('bookmarks', 0)} 个）",
+            ]
+            if amulet_used_total:
+                summary_lines.append(
+                    f"🛡️ 护符生效 {amulet_used_total} 个，返还 {_fmt_money(amulet_refund_total)} 方斯")
+            summary_lines += [
                 f"📊 本次收入: {'+' if batch_net >= 0 else '-'}{_fmt_money(abs(batch_net))} 方斯",
                 f"📊 累计收入: {'+' if net >= 0 else '-'}{_fmt_money(abs(net))} 方斯",
                 f"📅 {card_conf['label']}档今日剩余: {remaining_now} / {total_daily_tier} 张",
@@ -758,11 +647,13 @@ class NteScratchCardPlugin(Star):
         lines = [
             "🎴 NTE 刮刮乐 - 帮助\n",
             "━━━ 指令列表 ━━━",
-            f"刮刮乐 [数量]    购买5万档刮刮卡",
+            f"刮刮乐|刮刮乐5 [数量]    购买5万档刮刮卡",
             f"刮刮乐2 [数量]   购买2万档刮刮卡",
             f"刮刮乐3 [数量]   购买3万档刮刮卡",
-            f"刮刮乐5 [数量]   购买5万档刮刮卡",
+            f"刮全部           购买各档位今日基础限购的全部额度（不含追加额度）",
             f"刮取钱           每日随机领取方斯（{len(self._pension_tiers)}档循环，发完重洗）",
+            f"刮商店           回声书签商店：方斯/追加额度/大手/后门",
+            f"刮商店           回声书签商店：方斯/追加额度/大手/后门",
             f"刮余额           查看余额和游戏统计",
             f"富爪榜           累计盈亏排行榜",
             f"富爪日榜         今日盈亏排行榜",
@@ -772,8 +663,8 @@ class NteScratchCardPlugin(Star):
         if event.is_admin():
             lines += [
                 "━━━ 管理员指令 ━━━",
-                f"刮发钱 @用户 金额    给指定用户增加方斯余额",
-                f"刮发卡 [数量] @用户  给指定用户增加今日额外购卡额度",
+                f"刮发钱 @用户 金额    给指定用户发放方斯",
+                f"刮发卡 [数量] @用户  给指定用户发放今日追加购卡额度",
             ]
         lines += [
             "\n━━━ 介绍 ━━━",
@@ -785,7 +676,7 @@ class NteScratchCardPlugin(Star):
                 _fmt_money(CARD_TYPES[k]["cost"]) for k in sorted(CARD_TYPES)) + " 方斯",
             "回声书签: " + " / ".join(
                 f"{CARD_TYPES[k]['label']}+{CARD_TYPES[k]['bookmark_reward']}"
-                for k in sorted(CARD_TYPES)) + "（购卡累计，未来可兑换）",
+                for k in sorted(CARD_TYPES)) + "（购卡累计，可 /刮商店 消费）",
             f"格子: 3×5  |  最高奖: {_fmt_money(CARD_TYPES[50000]['max_prize'])} 方斯",
         ]
         yield event.plain_result("\n".join(lines))
@@ -883,7 +774,8 @@ class NteScratchCardPlugin(Star):
             f"📈 累计盈亏: {'+' if net >= 0 else '-'}{_fmt_money(abs(net))} 方斯",
             f"📅 今日剩余: {remaining_desc}",
             "",
-            f"🔖 回声书签: {stats.get('bookmarks', 0)} 个（购卡累计，可用于未来兑换）",
+            f"🔖 回声书签: {stats.get('bookmarks', 0)} 个（可 /刮商店 消费）",
+            f"🛡️ 护符: {self._amulet_status_text(stats)}",
             f"🎴 购买次数: {stats['cards_bought']} 张",
             f"🏆 中奖次数: {stats['cards_won']} 次",
             f"📊 中奖率: {win_rate:.1f}%",
@@ -891,6 +783,226 @@ class NteScratchCardPlugin(Star):
             f"💵 总奖金: {_fmt_money(stats['total_won'])} 方斯",
         ]
         return "\n".join(lines)
+
+    # ----------------------------------------------------------
+    # 指令: /刮商店 [商品] [数量] [档位]  - 回声书签商店
+    # ----------------------------------------------------------
+    @filter.command("刮商店")
+    async def scratch_shop(self, event: AstrMessageEvent):
+        """回声书签商店：无参数展示货架；带参数直接购买
+
+        用法：
+          /刮商店              展示商店货架（商品、价格、我的书签）
+          /刮商店 方斯 [数量]  购买方斯
+          /刮商店 卡 [数量] [档位] / 卡2 / 卡3 / 卡5  购买该档今日追加额度
+          /刮商店 大手         购买「玛门的大手」（1000书签）
+          /刮商店 后门         购买「猫丸的后门」（1500书签）
+        """
+        args = event.message_str.strip().split()
+        if args and args[0] in ("刮商店", "/刮商店"):
+            args = args[1:]
+        if not args:
+            yield event.plain_result(self._shop_text(event))
+            return
+        async for r in self._do_redeem(event, args):
+            yield r
+
+    def _shop_text(self, event: AstrMessageEvent) -> str:
+        """生成回声书签商店货架文本（按既定版面）"""
+        uid = event.get_sender_id()
+        self._ensure_user(uid)
+        stats = self._user_stats[uid]
+        have = stats.get("bookmarks", 0)
+        amulet_status = self._amulet_status_text(stats)
+
+        # 各档追加额度价格
+        cost2 = self._bookmark_cost_for_tier(CARD_TYPES[20000])
+        cost3 = self._bookmark_cost_for_tier(CARD_TYPES[30000])
+        cost5 = self._bookmark_cost_for_tier(CARD_TYPES[50000])
+
+        lines = [
+            "🛒 回声书签商店\n",
+            f"🔖 我的书签: {have} 个",
+            "",
+            "━━━ 商品列表 ━━━",
+            f"💰 {_fmt_money(BOOKMARK_MONEY_AMOUNT)} 方斯         {BOOKMARK_MONEY_UNIT} 书签 ",
+            "用法：刮商店 方斯 [数量]",
+            "",
+            f"🎴 追加额度(2万)     {cost2} 书签",
+            "用法：刮商店 卡2 [数量]",
+            "",
+            f"🎴 追加额度(3万)     {cost3} 书签",
+            "用法：刮商店 卡3 [数量]",
+            "",
+            f"🎴 追加额度(5万)     {cost5} 书签",
+            "用法：刮商店 卡|卡5 [数量]",
+            "",
+            f"🛡️ 玛门的大手      {AMULET_HAND_COST} 书签",
+            "用法：刮商店 大手",
+            "效果：今日基础额度购卡未中奖全额返还成本",
+            "",
+            f"🛡️ 猫丸的后门      {AMULET_BACKDOOR_COST} 书签",
+            "用法：刮商店 后门",
+            "效果：今日基础额度购卡中奖低于成本的返还",
+            "",
+            "━━━ 护符状态 ━━━",
+            amulet_status,
+        ]
+        return "\n".join(lines)
+
+    async def _do_redeem(self, event: AstrMessageEvent, args):
+        """兑换核心逻辑：解析参数并分发到具体兑换方法。"""
+        if not args:
+            yield event.plain_result(self._redeem_help_text())
+            return
+
+        kind = args[0]
+        # 解析数量与档位：数字 2/3/5（万）或完整档位金额视为档位，其余正整数视为数量
+        tier_alias = {2: 20000, 3: 30000, 5: 50000}
+        qty = 1
+        tier = 50000
+
+        # 商品名到档位的映射（卡/卡5 → 5万；卡2 → 2万；卡3 → 3万）
+        tier_kind = {
+            "卡2": 20000, "卡二": 20000,
+            "卡3": 30000, "卡三": 30000,
+            "卡5": 50000, "卡五": 50000,
+        }
+        if kind in tier_kind:
+            tier = tier_kind[kind]
+            kind = "卡"
+
+        need_tier = kind in ("卡", "card", "额度")
+        for a in args[1:]:
+            try:
+                v = int(a)
+            except ValueError:
+                continue
+            if need_tier and v in tier_alias:
+                tier = tier_alias[v]
+            elif need_tier and v in CARD_TYPES:
+                tier = v
+            elif v >= 1:
+                qty = v
+        qty = max(1, qty)
+
+        uid = event.get_sender_id()
+        self._ensure_user(uid)
+        stats = self._user_stats[uid]
+
+        if kind in ("钱", "money", "方斯"):
+            yield event.plain_result(self._redeem_money(uid, stats, qty))
+            return
+        if kind in ("卡", "card", "额度"):
+            yield event.plain_result(self._redeem_cards(uid, stats, qty, tier))
+            return
+        if kind in ("大手", "hand", "玛门的大手"):
+            yield event.plain_result(self._redeem_hand(uid, stats))
+            return
+        if kind in ("后门", "backdoor", "猫丸的后门"):
+            yield event.plain_result(self._redeem_backdoor(uid, stats))
+            return
+
+        yield event.plain_result(
+            f"❌ 未知商品「{kind}」\n" + self._redeem_help_text())
+
+    def _redeem_help_text(self) -> str:
+        """兑换帮助文本"""
+        lines = [
+            "🔖 回声书签兑换\n",
+            "━━━ 兑换项目 ━━━",
+            f"💰 方斯: {BOOKMARK_MONEY_UNIT} 书签 = {_fmt_money(BOOKMARK_MONEY_AMOUNT)} 方斯",
+            f"🎴 追加额度: 各档 1 张 = {BOOKMARK_CARD_MULT}×回报书签",
+            f"🛡️ 玛门的大手: {AMULET_HAND_COST} 书签，今日基础额度购卡未中奖全额返还成本",
+            f"🛡️ 猫丸的后门: {AMULET_BACKDOOR_COST} 书签，今日基础额度购卡中奖低于成本返差额",
+            "",
+            "档位回报书签: " + " / ".join(
+                f"{CARD_TYPES[k]['label']} {CARD_TYPES[k]['bookmark_reward']}"
+                for k in sorted(CARD_TYPES)),
+            "各档成本: " + " / ".join(
+                f"{CARD_TYPES[k]['label']} {self._bookmark_cost_for_tier(CARD_TYPES[k])}"
+                for k in sorted(CARD_TYPES)),
+            "",
+            "用法:",
+            "  刮商店 方斯 [数量]",
+            "  刮商店 卡 [数量] [档位]   （或 卡2/卡3/卡5）",
+            "  刮商店 大手",
+            "  刮商店 后门",
+            "档位: 2 / 3 / 5（万），默认 5 万档",
+        ]
+        return "\n".join(lines)
+
+    def _redeem_money(self, uid: str, stats: dict, qty: int) -> str:
+        """书签兑换方斯"""
+        need = BOOKMARK_MONEY_UNIT * qty
+        have = stats.get("bookmarks", 0)
+        if have < need:
+            return (
+                f"❌ 书签不足！需要 {need} 个，当前只有 {have} 个\n"
+                f"（{BOOKMARK_MONEY_UNIT} 书签 = {_fmt_money(BOOKMARK_MONEY_AMOUNT)} 方斯）")
+        amount = BOOKMARK_MONEY_AMOUNT * qty
+        stats["bookmarks"] = have - need
+        self._user_balance[uid] += amount
+        self._save_balance()
+        self._save_stats()
+        return (
+            f"💰 兑换成功！\n"
+            f"消耗 {need} 个回声书签 → 获得 {_fmt_money(amount)} 方斯\n"
+            f"🔖 剩余书签: {stats['bookmarks']} 个\n"
+            f"💰 当前余额: {_fmt_money(self._user_balance[uid])} 方斯")
+
+    def _redeem_cards(self, uid: str, stats: dict, qty: int, tier: int) -> str:
+        """书签兑换该档今日追加额度"""
+        card_conf = CARD_TYPES.get(int(tier), CARD_TYPES[50000])
+        tier_key = str(int(tier)) if int(tier) in CARD_TYPES else "50000"
+        need = self._bookmark_cost_for_tier(card_conf) * qty
+        have = stats.get("bookmarks", 0)
+        if have < need:
+            return (
+                f"❌ 书签不足！兑换 {card_conf['label']}档 {qty} 张额度需要 {need} 个，"
+                f"当前只有 {have} 个")
+        stats["bookmarks"] = have - need
+        _, extra_by_tier = self._tier_daily(stats)
+        extra_by_tier[tier_key] = extra_by_tier.get(tier_key, 0) + qty
+        self._save_stats()
+        return (
+            f"🎴 兑换成功！\n"
+            f"消耗 {need} 个回声书签 → {card_conf['label']}档 +{qty} 张今日追加额度\n"
+            f"🔖 剩余书签: {stats['bookmarks']} 个")
+
+    def _redeem_hand(self, uid: str, stats: dict) -> str:
+        """书签兑换「玛门的大手」：今日基础额度购卡未中奖全额返还成本"""
+        return self._activate_amulet(stats, "hand", AMULET_HAND_COST,
+                                     "玛门的大手",
+                                     "今日基础额度购卡未中奖将全额返还成本")
+
+    def _redeem_backdoor(self, uid: str, stats: dict) -> str:
+        """书签兑换「猫丸的后门」：今日基础额度购卡中奖低于成本返差额"""
+        return self._activate_amulet(stats, "backdoor", AMULET_BACKDOOR_COST,
+                                     "猫丸的后门",
+                                     "今日基础额度购卡中奖低于成本将返还差额")
+
+    def _activate_amulet(self, stats: dict, amulet_type: str, cost: int,
+                         name: str, effect: str) -> str:
+        """激活当日保底护符（大手/后门）。同一天只能有一种生效，已有护符时直接拦截。"""
+        today = date.today().isoformat()
+        active_type = self._amulet_active(stats)
+        if active_type:
+            active_name = "玛门的大手" if active_type == "hand" else "猫丸的后门"
+            return f"❌ 今日「{active_name}」已生效，护符每日限购一种（当日有效，明日可再买）"
+        have = stats.get("bookmarks", 0)
+        if have < cost:
+            return (
+                f"❌ 书签不足！购买「{name}」需要 {cost} 个，当前只有 {have} 个")
+        stats["bookmarks"] = have - cost
+        stats["amulet_date"] = today
+        stats["amulet_type"] = amulet_type
+        self._save_stats()
+        return (
+            f"🛡️ {name}生效！\n"
+            f"消耗 {cost} 个回声书签 → 今日保底生效\n"
+            f"🔖 剩余书签: {stats['bookmarks']} 个\n"
+            f"🛡️ {effect}")
 
     # ----------------------------------------------------------
     # 指令: /刮卡排行  - 排行榜
@@ -1156,7 +1268,7 @@ class NteScratchCardPlugin(Star):
         )
 
     # ----------------------------------------------------------
-    # 指令: /刮发卡 [数量] @用户  - 管理员发额外卡次数
+    # 指令: /刮发卡 [数量] @用户  - 管理员发追加额度
     # ----------------------------------------------------------
     @filter.command("刮发卡")
     async def give_extra_cards(self, event: AstrMessageEvent):
@@ -1228,7 +1340,7 @@ class NteScratchCardPlugin(Star):
 
         return (
             f"🎴 发卡成功！\n"
-            f"{target_name} 获得 {card_conf['label']}档 +{extra} 张额外额度\n"
+            f"{target_name} 获得 {card_conf['label']}档 +{extra} 张追加额度\n"
             f"📅 今日可购: {remaining} / {total_daily} 张"
         )
 

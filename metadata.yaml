@@ -1,9 +1,9 @@
 name: astrbot_plugin_nte_scratch_card
 display_name: 异环刮刮乐
-short_desc: 复刻异环的刮刮乐玩法，购买刮刮乐赢取方斯，支持排行榜、转账、管理员发钱/发卡与 LLM 自然语言指令。
-desc: 异环游戏的刮刮乐玩法。购买刮刮乐赢取奖金，每日随机领取方斯福利，支持排行榜、转账、管理员发钱/发卡与成员申请审批；支持通过 LLM 自然语言触发刮卡、查余额、申请与审批等操作。
+short_desc: 复刻异环的刮刮乐玩法，购买刮刮乐赢取方斯，支持回声书签商店、排行榜、转账、管理员发钱/发卡与 LLM 自然语言指令。
+desc: 异环游戏的刮刮乐玩法。购买刮刮乐赢取奖金，每日随机领取方斯福利，购卡累计回声书签可在商店兑换方斯、追加额度与保底护符（大手/后门）；支持排行榜、转账、管理员发钱/发卡与成员申请审批；支持通过 LLM 自然语言触发刮卡、查余额、申请与审批等操作。
 category: 娱乐
-version: v1.3.1
+version: v1.4.0
 author: CavinGou
 repo: https://github.com/CavinGou/astrbot_plugin_nte_scratch_card
 social_link: https://github.com/CavinGou
