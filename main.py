@@ -197,7 +197,7 @@ class NteScratchCardPlugin(Star):
         return "⚪ 未生效"
 
     def _amulet_refund_amount(self, stats: dict, card_conf: dict, prize: int) -> int:
-        """计算该张卡在护符生效时应返还的方斯（0 表示不触发）。
+        """计算该张卡在护符生效时应获得的方斯（0 表示不触发）。
 
         大手(hand)：未中奖(prize==0) → 全额返还成本
         后门(backdoor)：中奖低于成本(prize<cost，含未中奖) → 返还差额 cost-prize
@@ -414,7 +414,7 @@ class NteScratchCardPlugin(Star):
                 board = _card_to_str(card)
                 prize_line = f"🎉 中奖 {_fmt_money(prize)} 方斯" if prize > 0 else "😅 未中奖"
                 if amulet_refund:
-                    prize_line += f"\n🛡️ 护符生效！返还 {_fmt_money(amulet_refund)} 方斯"
+                    prize_line += f"\n🛡️ 护符生效！获得 {_fmt_money(amulet_refund)} 方斯"
                 card_text = (
                     f"🎴 {card_conf['label']} · 第 {card_no}/{total_cards} 张\n"
                     f"{board}\n"
@@ -445,7 +445,7 @@ class NteScratchCardPlugin(Star):
         ]
         if amulet_used_total:
             summary_lines.append(
-                f"🛡️ 护符生效 {amulet_used_total} 个，返还 {_fmt_money(amulet_refund_total)} 方斯")
+                f"🛡️ 护符生效 {amulet_used_total} 个，获得 {_fmt_money(amulet_refund_total)} 方斯")
         summary_lines += [
             f"📊 本次收入: {'+' if batch_net >= 0 else '-'}{_fmt_money(abs(batch_net))} 方斯",
             f"📊 累计收入: {'+' if net >= 0 else '-'}{_fmt_money(abs(net))} 方斯",
@@ -552,7 +552,7 @@ class NteScratchCardPlugin(Star):
                 prize_line,
             ]
             if amulet_used:
-                lines.append(f"🛡️ 护符生效！返还 {_fmt_money(amulet_refund)} 方斯")
+                lines.append(f"🛡️ 护符生效！获得 {_fmt_money(amulet_refund)} 方斯")
             lines += [
                 f"🔖 获得 {bookmarked_count * card_conf['bookmark_reward']} 个回声书签（累计 {stats.get('bookmarks', 0)} 个）",
                 f"",
@@ -647,7 +647,8 @@ class NteScratchCardPlugin(Star):
         lines = [
             "🎴 NTE 刮刮乐 - 帮助\n",
             "━━━ 指令列表 ━━━",
-            f"刮刮乐|刮刮乐5 [数量]    购买5万档刮刮卡",
+            f"刮刮乐 [数量]    购买5万档刮刮卡",
+            f"刮刮乐5 [数量]   购买5万档刮刮卡",
             f"刮刮乐2 [数量]   购买2万档刮刮卡",
             f"刮刮乐3 [数量]   购买3万档刮刮卡",
             f"刮全部           购买各档位今日基础限购的全部额度（不含追加额度）",
@@ -666,19 +667,6 @@ class NteScratchCardPlugin(Star):
                 f"刮发钱 @用户 金额    给指定用户发放方斯",
                 f"刮发卡 [数量] @用户  给指定用户发放今日追加购卡额度",
             ]
-        lines += [
-            "\n━━━ 介绍 ━━━",
-            f"初始余额: 300万",
-            "每日限购(各档独立): " + " / ".join(
-                f"{CARD_TYPES[k]['label']} {CARD_TYPES[k]['daily_limit']}张"
-                for k in sorted(CARD_TYPES)),
-            "档位售价: " + " / ".join(
-                _fmt_money(CARD_TYPES[k]["cost"]) for k in sorted(CARD_TYPES)) + " 方斯",
-            "回声书签: " + " / ".join(
-                f"{CARD_TYPES[k]['label']}+{CARD_TYPES[k]['bookmark_reward']}"
-                for k in sorted(CARD_TYPES)) + "（购卡累计，可 /刮商店 消费）",
-            f"格子: 3×5  |  最高奖: {_fmt_money(CARD_TYPES[50000]['max_prize'])} 方斯",
-        ]
         yield event.plain_result("\n".join(lines))
 
     # ----------------------------------------------------------
@@ -835,7 +823,8 @@ class NteScratchCardPlugin(Star):
             "用法：刮商店 卡3 [数量]",
             "",
             f"🎴 追加额度(5万)     {cost5} 书签",
-            "用法：刮商店 卡|卡5 [数量]",
+            "用法：刮商店 卡 [数量]",
+            "用法2：刮商店 卡5 [数量]",
             "",
             f"🛡️ 玛门的大手      {AMULET_HAND_COST} 书签",
             "用法：刮商店 大手",
