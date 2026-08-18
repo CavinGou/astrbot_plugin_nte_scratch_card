@@ -48,7 +48,7 @@ from .core import (
     "nte_scratch_card",
     "CavinGou",
     "复刻 NTE 游戏的刮刮乐玩法",
-    "1.4.0",
+    "1.4.1",
 )
 class NteScratchCardPlugin(Star):
     """NTE 刮刮乐插件"""

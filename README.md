@@ -10,7 +10,7 @@
 | 插件名称 | `astrbot_plugin_nte_scratch_card` |
 | 展示名 | 异环刮刮乐 |
 | 作者 | [CavinGou](https://github.com/CavinGou) |
-| 版本 | v1.4.0 |
+| 版本 | v1.4.1 |
 | 仓库 | [CavinGou/astrbot_plugin_nte_scratch_card](https://github.com/CavinGou/astrbot_plugin_nte_scratch_card) |
 | 支持平台 | 仅 OneBot v11（`aiocqhttp`） |
 | AstrBot 版本 | `>= 4.17.0` |
